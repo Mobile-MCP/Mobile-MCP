@@ -12,9 +12,9 @@
     <service
         android:name=".YourMcpService"
         android:exported="true"
-        android:permission="io.rosenpin.mcp.permission.ACCESS_MCP_SERVICE">
+        android:permission="io.rosenpin.mmcp.permission.ACCESS_MCP_SERVICE">
         <intent-filter>
-            <action android:name="io.rosenpin.mcp.action.MCP_SERVICE" />
+            <action android:name="io.rosenpin.mmcp.action.MCP_SERVICE" />
             <category android:name="android.intent.category.DEFAULT" />
         </intent-filter>
         <meta-data
@@ -37,9 +37,9 @@
     <service
         android:name=".YourMcpToolService"
         android:exported="true"
-        android:permission="io.rosenpin.mcp.permission.ACCESS_MCP_SERVICE">
+        android:permission="io.rosenpin.mmcp.permission.ACCESS_MCP_SERVICE">
         <intent-filter>
-            <action android:name="io.rosenpin.mcp.action.MCP_TOOL_SERVICE" />
+            <action android:name="io.rosenpin.mmcp.action.MCP_TOOL_SERVICE" />
             <category android:name="android.intent.category.DEFAULT" />
         </intent-filter>
     </service>
@@ -47,9 +47,9 @@
     <service
         android:name=".YourMcpResourceService"
         android:exported="true"
-        android:permission="io.rosenpin.mcp.permission.ACCESS_MCP_SERVICE">
+        android:permission="io.rosenpin.mmcp.permission.ACCESS_MCP_SERVICE">
         <intent-filter>
-            <action android:name="io.rosenpin.mcp.action.MCP_RESOURCE_SERVICE" />
+            <action android:name="io.rosenpin.mmcp.action.MCP_RESOURCE_SERVICE" />
             <category android:name="android.intent.category.DEFAULT" />
         </intent-filter>
     </service>
@@ -57,9 +57,9 @@
     <service
         android:name=".YourMcpPromptService"
         android:exported="true"
-        android:permission="io.rosenpin.mcp.permission.ACCESS_MCP_SERVICE">
+        android:permission="io.rosenpin.mmcp.permission.ACCESS_MCP_SERVICE">
         <intent-filter>
-            <action android:name="io.rosenpin.mcp.action.MCP_PROMPT_SERVICE" />
+            <action android:name="io.rosenpin.mmcp.action.MCP_PROMPT_SERVICE" />
             <category android:name="android.intent.category.DEFAULT" />
         </intent-filter>
     </service>
