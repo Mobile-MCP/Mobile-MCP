@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "io.rosenpin.mmcp.client"
+    namespace = "io.rosenpin.mcp.client"
     compileSdk = 35
 
     defaultConfig {
