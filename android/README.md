@@ -10,24 +10,39 @@ This guide covers everything you need to integrate MCP capabilities in your Andr
 
 ```
 android/
-├── mmcpcore-android/          # Core Android library
-│   ├── src/main/java/         # Main library code
+├── mmcp-client-android/       # Client library for LLM apps
+│   ├── src/main/java/         # HTTP server, discovery, direct API
 │   ├── src/test/java/         # Unit tests
 │   └── src/androidTest/java/  # Integration tests
+├── mmcp-server-android/       # Server framework for 3rd party apps
+│   ├── src/main/java/         # Annotations, AIDL generation, runtime
+│   ├── annotation-processor/  # KAPT processor for @MCPServer
+│   └── gradle-plugin/         # Build integration
 ├── app/                       # Example Android app
-└── gradle-plugin/             # Build plugin (planned)
+└── shared/                    # Common utilities (if needed)
 ```
 
-## Core Library (`mmcpcore-android`)
+## Two Library Architecture
 
-The main Android library (`io.rosenpin.mcp:mmcpcore-android`) provides:
+### `mmcp-client-android` - For LLM Apps
 
-- **MCP Client Library**: HTTP server + AIDL discovery for LLM apps
-- **MCP Server Framework**: Annotations + code generation for exposing tools  
-- **Discovery Protocol**: Intent-based service discovery
-- **Transport Layer**: AIDL-to-HTTP bridge with stdio future-proofing
+The client library (`io.rosenpin.mcp:mmcp-client-android`) provides:
 
-**Dependencies**: NanoHTTPD (HTTP server), Android AIDL (discovery), Kotlin Coroutines (async operations)
+- **HTTP Server**: NanoHTTPD-based MCP endpoint server (port 11434)
+- **Discovery Engine**: Intent-based Android MCP server discovery
+- **Direct API**: In-process tool calling for MLKit-style LLMs
+- **Transport Bridge**: AIDL-to-HTTP/Direct call abstraction
+
+### `mmcp-server-android` - For 3rd Party Apps
+
+The server framework (`io.rosenpin.mcp:mmcp-server-android`) provides:
+
+- **Annotations**: `@MCPServer`, `@MCPTool`, `@MCPResource` for easy integration
+- **Code Generation**: KAPT processor for AIDL service generation
+- **Build Integration**: Gradle plugin for manifest entries and permissions
+- **Runtime Support**: Base classes and utilities for generated services
+
+**Dependencies**: Android AIDL, Kotlin Coroutines, Gson (JSON), KAPT (code generation)
 
 ## Integration Guide
 
@@ -35,12 +50,12 @@ The main Android library (`io.rosenpin.mcp:mmcpcore-android`) provides:
 
 If you're building an LLM app (like Ollama, MLKit integration, etc.) and want access to local MCP servers:
 
-#### 1. Add Dependency
+#### 1. Add Client Library Dependency
 
 ```kotlin
 // build.gradle.kts (Module: app)
 dependencies {
-    implementation("io.rosenpin.mcp:mmcpcore-android:1.0.0")
+    implementation("io.rosenpin.mcp:mmcp-client-android:1.0.0")
 }
 ```
 
@@ -136,17 +151,17 @@ val resource = mcpClient.getResource(
 
 If you have an existing Android app and want to expose its capabilities to LLMs:
 
-#### 1. Add Plugin and Dependencies
+#### 1. Add Server Framework Dependencies
 
 ```kotlin
 // build.gradle.kts (Module: app)
 plugins {
-    id("io.rosenpin.mcp.android") version "1.0.0"  // Planned - generates AIDL & manifest
+    id("io.rosenpin.mcp.android") version "1.0.0"  // Generates AIDL & manifest
 }
 
 dependencies {
-    implementation("io.rosenpin.mcp:mmcpcore-android:1.0.0")
-    kapt("io.rosenpin.mcp:annotation-processor:1.0.0")  // Planned - processes annotations
+    implementation("io.rosenpin.mcp:mmcp-server-android:1.0.0")
+    kapt("io.rosenpin.mcp:mmcp-server-android:1.0.0")  // Processes @MCPServer annotations
 }
 ```
 
@@ -273,17 +288,17 @@ class LocationMCPServer(private val context: Context) {
 
 ```bash
 cd android/
-./gradlew :mmcpcore-android:build
+./gradlew :mmcp-client-android:build :mmcp-server-android:build
 ```
 
 ### Running Tests
 
 ```bash
 # Unit tests
-./gradlew :mmcpcore-android:test
+./gradlew :mmcp-client-android:test :mmcp-server-android:test
 
 # Integration tests (requires device/emulator)
-./gradlew :mmcpcore-android:connectedAndroidTest
+./gradlew :mmcp-client-android:connectedAndroidTest :mmcp-server-android:connectedAndroidTest
 ```
 
 ### Example App

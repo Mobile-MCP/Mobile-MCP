@@ -295,10 +295,15 @@ mmcp/
 │   ├── correlation/          # Request/response correlation  
 │   └── registry/             # Tool/resource registration
 ├── android/                  # Android implementation
-│   ├── gradle-plugin/        # Build system integration
-│   ├── annotation-processor/ # KAPT code generation
-│   ├── runtime/              # AIDL transport + HTTP server
-│   └── library/              # Developer-facing API
+│   ├── mmcp-client-android/  # Client library for LLM apps
+│   │   ├── discovery/        # Intent-based server discovery
+│   │   ├── http-server/      # NanoHTTPD MCP endpoints
+│   │   └── transport/        # AIDL-to-HTTP bridge
+│   └── mmcp-server-android/  # Server framework for 3rd party apps
+│       ├── annotations/      # @MCPServer, @MCPTool definitions
+│       ├── processor/        # KAPT annotation processor
+│       ├── gradle-plugin/    # Build system integration
+│       └── runtime/          # Generated service base classes
 ├── ios/                      # iOS implementation
 │   ├── swift-macros/         # Code generation
 │   ├── spm-plugin/           # Build system integration
@@ -307,9 +312,9 @@ mmcp/
 ├── research/                 # Research documents and findings
 ├── docs/                     # Architecture documentation
 └── examples/                 # Sample implementations
-    ├── android-fileserver/   # @MCPServer example
-    ├── android-client/       # MCP consumer app
-    └── ios-fileserver/       # @MCPServer example
+    ├── android-fileserver/   # mmcp-server-android usage example
+    ├── android-llm-app/      # mmcp-client-android usage example
+    └── ios-fileserver/       # iOS @MCPProvider example (future)
 ```
 
 ## Implementation Timeline

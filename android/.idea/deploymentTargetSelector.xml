@@ -5,7 +5,10 @@
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="mmcpcore">
+      <SelectionState runConfigName="mmcp-client-android">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
+      <SelectionState runConfigName="mmcp-server-android">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

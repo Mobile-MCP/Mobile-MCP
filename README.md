@@ -14,8 +14,8 @@ Mobile LLMs are isolated - they can't access your files, contacts, calendar, or 
 
 A **two-sided framework** that bridges this gap:
 
-- **For LLM Apps**: Import our client library, get instant access to local MCP servers
-- **For App Developers**: Add simple annotations, expose your app's capabilities to any LLM
+- **For LLM Apps**: Import `mmcp-client-android`, get instant access to local MCP servers
+- **For App Developers**: Import `mmcp-server-android`, add simple annotations, expose your app's capabilities to any LLM
 
 ## Platform Support
 
@@ -30,11 +30,11 @@ A **two-sided framework** that bridges this gap:
 **Get started in 2 minutes:**
 
 ```kotlin
-// LLM Apps: Add one dependency, start HTTP server
+// LLM Apps: Add mmcp-client-android dependency
 val mcpClient = MobileMCPClient()
 mcpClient.startHttpServer() // Discover and access all local tools
 
-// App Developers: Add one annotation, expose your capabilities  
+// App Developers: Add mmcp-server-android dependency
 @MCPServer class MyAppTools {
     @MCPTool suspend fun search(@MCPParam query: String) = myDatabase.search(query)
 }
@@ -54,8 +54,8 @@ mcpClient.startHttpServer() // Discover and access all local tools
 
 ```
 ┌─────────────────────┐    HTTP/Direct Calls    ┌─────────────────────┐
-│   Mobile LLM App    │ ◄─────────────────────► │ Mobile MCP Client   │
-│  (Ollama, MLKit)    │                         │     Library         │
+│   Mobile LLM App    │ ◄─────────────────────► │ mmcp-client-android │
+│  (Ollama, MLKit)    │                         │ (Discovery & HTTP)  │
 └─────────────────────┘                         └─────────────────────┘
                                                            │
                                                     AIDL Discovery
@@ -63,6 +63,7 @@ mcpClient.startHttpServer() // Discover and access all local tools
                                                            ▼
                                                 ┌─────────────────────┐
                                                 │  3rd Party Apps     │
+                                                │ mmcp-server-android │
                                                 │ (@MCPServer tools)  │
                                                 └─────────────────────┘
 ```

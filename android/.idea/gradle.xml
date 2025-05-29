@@ -11,7 +11,8 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/app" />
-            <option value="$PROJECT_DIR$/mmcpcore-android" />
+            <option value="$PROJECT_DIR$/mmcp-client-android" />
+            <option value="$PROJECT_DIR$/mmcp-server-android" />
           </set>
         </option>
       </GradleProjectSettings>
