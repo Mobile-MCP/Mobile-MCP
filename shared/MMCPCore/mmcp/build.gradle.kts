@@ -58,4 +58,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+    
+    // Enable AIDL support for Android-specific MCP interfaces
+    buildFeatures {
+        aidl = true
+    }
 }
