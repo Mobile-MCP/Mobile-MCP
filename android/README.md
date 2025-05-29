@@ -1,0 +1,419 @@
+# Android Integration Guide
+
+Complete implementation guide for the Mobile MCP Framework on Android.
+
+> 👈 New to Mobile MCP? Start with the [main project overview](../README.md)
+
+This guide covers everything you need to integrate MCP capabilities in your Android apps, whether you're building an LLM app that needs access to local tools or a regular app that wants to expose capabilities to LLMs.
+
+## Module Structure
+
+```
+android/
+├── mmcpcore-android/          # Core Android library
+│   ├── src/main/java/         # Main library code
+│   ├── src/test/java/         # Unit tests
+│   └── src/androidTest/java/  # Integration tests
+├── app/                       # Example Android app
+└── gradle-plugin/             # Build plugin (planned)
+```
+
+## Core Library (`mmcpcore-android`)
+
+The main Android library (`io.rosenpin.mcp:mmcpcore-android`) provides:
+
+- **MCP Client Library**: HTTP server + AIDL discovery for LLM apps
+- **MCP Server Framework**: Annotations + code generation for exposing tools  
+- **Discovery Protocol**: Intent-based service discovery
+- **Transport Layer**: AIDL-to-HTTP bridge with stdio future-proofing
+
+**Dependencies**: NanoHTTPD (HTTP server), Android AIDL (discovery), Kotlin Coroutines (async operations)
+
+## Integration Guide
+
+### For LLM App Developers
+
+If you're building an LLM app (like Ollama, MLKit integration, etc.) and want access to local MCP servers:
+
+#### 1. Add Dependency
+
+```kotlin
+// build.gradle.kts (Module: app)
+dependencies {
+    implementation("io.rosenpin.mcp:mmcpcore-android:1.0.0")
+}
+```
+
+#### 2. Add Permissions
+
+```xml
+<!-- AndroidManifest.xml -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" 
+    tools:ignore="QueryAllPackagesPermission" />
+
+<!-- Package visibility for MCP servers (Android 11+) -->
+<queries>
+    <intent>
+        <action android:name="io.mmcp.action.SERVER" />
+    </intent>
+</queries>
+```
+
+#### 3. Implement MCP Client
+
+```kotlin
+class MyLLMActivity : ComponentActivity() {
+    private lateinit var mcpClient: MobileMCPClient
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // Initialize MCP client
+        lifecycleScope.launch {
+            mcpClient = MobileMCPClient(this@MyLLMActivity)
+            
+            // Start HTTP server (defaults to port 11434 - Ollama compatible)
+            val httpServer = mcpClient.startHttpServer(port = 11434)
+            
+            // Discover available MCP servers
+            val servers = mcpClient.discoverServers()
+            Log.d("MCP", "Found ${servers.size} MCP servers")
+            
+            // Your LLM can now make HTTP calls to these endpoints:
+            // http://localhost:11434/mcp/tools/list        - List all available tools
+            // http://localhost:11434/mcp/tools/call        - Call a specific tool
+            // http://localhost:11434/mcp/resources/list    - List all resources
+            // http://localhost:11434/mcp/resources/read    - Read a specific resource
+        }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        lifecycleScope.launch {
+            mcpClient.stopHttpServer()
+        }
+    }
+}
+```
+
+#### 4. HTTP API Usage
+
+Your LLM can make standard HTTP requests:
+
+```kotlin
+// List all available tools across all servers
+val toolsResponse = httpClient.get("http://localhost:11434/mcp/tools/list")
+// Returns: { "tools": [{"name": "search_files", "description": "...", "server": "com.fileapp.mcp"}] }
+
+// Call a specific tool
+val callResponse = httpClient.post("http://localhost:11434/mcp/tools/call") {
+    setBody("""{"tool": "search_files", "server": "com.fileapp.mcp", "params": {"query": "documents"}}""")
+}
+// Returns: { "result": [...] }
+```
+
+#### 5. Direct API Usage (Alternative)
+
+For more control, use the direct API instead of HTTP:
+
+```kotlin
+// Direct tool calling (bypasses HTTP layer)
+val result = mcpClient.callTool(
+    serverId = "com.fileapp.mcp",
+    toolName = "search_files", 
+    params = JsonObject().apply { addProperty("query", "documents") }
+)
+
+// Direct resource access
+val resource = mcpClient.getResource(
+    serverId = "com.fileapp.mcp",
+    uri = "file:///storage/emulated/0/Documents/readme.txt"
+)
+```
+
+### For App Developers (Exposing Tools)
+
+If you have an existing Android app and want to expose its capabilities to LLMs:
+
+#### 1. Add Plugin and Dependencies
+
+```kotlin
+// build.gradle.kts (Module: app)
+plugins {
+    id("io.rosenpin.mcp.android") version "1.0.0"  // Planned - generates AIDL & manifest
+}
+
+dependencies {
+    implementation("io.rosenpin.mcp:mmcpcore-android:1.0.0")
+    kapt("io.rosenpin.mcp:annotation-processor:1.0.0")  // Planned - processes annotations
+}
+```
+
+#### 2. Define Your MCP Server
+
+```kotlin
+@MCPServer(
+    id = "com.myapp.filemanager",           // Unique server ID
+    name = "File Manager",                  // Human-readable name
+    description = "Provides file system operations",
+    version = "1.0.0"
+)
+class FileManagerMCPServer {
+    
+    @MCPTool(
+        name = "list_files",
+        description = "List files in a directory",
+        schema = """{"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}"""
+    )
+    suspend fun listFiles(@MCPParam("path") path: String): List<FileInfo> {
+        // Your existing file listing logic
+        return File(path).listFiles()?.map { 
+            FileInfo(it.name, it.length(), it.isDirectory()) 
+        } ?: emptyList()
+    }
+    
+    @MCPTool(
+        name = "create_folder", 
+        description = "Create a new folder",
+        schema = """{"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}"""
+    )
+    suspend fun createFolder(@MCPParam("path") path: String): Boolean {
+        return File(path).mkdirs()
+    }
+    
+    @MCPResource(scheme = "file")
+    suspend fun getFileResource(@MCPParam("uri") uri: String): MCPResource {
+        val file = File(URI(uri).path)
+        return MCPResource(
+            uri = uri,
+            name = file.name,
+            mimeType = getMimeType(file),
+            contents = file.readText()
+        )
+    }
+}
+```
+
+#### 3. Build Your App
+
+The build plugin auto-generates:
+- **AIDL interface definitions** for your server
+- **Android Service implementation** that handles MCP protocol 
+- **Manifest entries** for service discovery (`io.mmcp.action.SERVER`)
+- **Permission declarations** for any sensitive operations
+
+#### 4. Test Your MCP Server
+
+```kotlin
+// Your app can test its own MCP server locally
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // Test with local MCP client
+        lifecycleScope.launch {
+            val mcpClient = MobileMCPClient(this@MainActivity)
+            mcpClient.startHttpServer()
+            
+            val servers = mcpClient.discoverServers()
+            val myServer = servers.find { it.id == "com.myapp.filemanager" }
+            Log.d("MCP", "My server discoverable: ${myServer != null}")
+        }
+    }
+}
+```
+
+#### 5. Advanced Features
+
+**Multiple Resource Schemes:**
+```kotlin
+@MCPServer(id = "com.myapp.media", name = "Media Manager")
+class MediaMCPServer {
+    
+    @MCPResource(scheme = "photo")
+    suspend fun getPhoto(@MCPParam("uri") uri: String): MCPResource { ... }
+    
+    @MCPResource(scheme = "video") 
+    suspend fun getVideo(@MCPParam("uri") uri: String): MCPResource { ... }
+}
+```
+
+**Permission-Based Tools:**
+```kotlin
+@MCPTool(
+    name = "read_contacts",
+    description = "Read device contacts",
+    requiredPermissions = ["android.permission.READ_CONTACTS"]
+)
+suspend fun readContacts(): List<Contact> { ... }
+```
+
+**Context-Aware Tools:**
+```kotlin
+@MCPServer(id = "com.myapp.location", name = "Location Services")
+class LocationMCPServer(private val context: Context) {
+    
+    @MCPTool(name = "get_location")
+    suspend fun getCurrentLocation(): Location {
+        // Use context to access location services
+        return locationManager.getCurrentLocation()
+    }
+}
+
+## Development Setup
+
+### Prerequisites
+- Android Studio Arctic Fox or later
+- Android SDK 24+ (API level 24)
+- Kotlin 1.9+
+- Gradle 8.0+
+
+### Building the Library
+
+```bash
+cd android/
+./gradlew :mmcpcore-android:build
+```
+
+### Running Tests
+
+```bash
+# Unit tests
+./gradlew :mmcpcore-android:test
+
+# Integration tests (requires device/emulator)
+./gradlew :mmcpcore-android:connectedAndroidTest
+```
+
+### Example App
+
+The `app/` module contains an example implementation:
+
+```bash
+./gradlew :app:installDebug
+```
+
+## Architecture Details
+
+### HTTP Server Implementation
+- Uses NanoHTTPD for lightweight HTTP serving
+- Runs on port 11434 (Ollama-compatible)
+- Lifecycle tied to LLM app activity
+- Endpoints follow MCP specification
+
+### AIDL Discovery
+- Intent action: `io.mmcp.action.SERVER`
+- Categories for capability grouping
+- Metadata for server information
+- Package visibility queries (Android 11+)
+
+### Security Model
+- Signature-level permissions for trusted ecosystems
+- Runtime permissions for sensitive operations
+- Caller verification via Binder.getCallingUid()
+- Permission scoping per tool/resource
+
+### Threading Model
+- All operations async with Kotlin coroutines
+- Background thread pool for heavy operations
+- Main thread for UI updates only
+- Memory-bandwidth optimized (big cores only)
+
+## API Reference
+
+### MobileMCPClient
+
+```kotlin
+class MobileMCPClient(context: Context) {
+    suspend fun startHttpServer(port: Int = 11434): MCPHttpServer
+    suspend fun stopHttpServer()
+    suspend fun discoverServers(): List<MCPServerInfo>
+    suspend fun callTool(serverId: String, toolName: String, params: JsonObject): JsonElement
+    suspend fun getResource(serverId: String, uri: String): MCPResource
+    fun createStdioTransport(): Transport? // Future-proofing
+}
+```
+
+### Annotations
+
+```kotlin
+@MCPServer(id: String, name: String, description: String, version: String)
+@MCPTool(name: String, description: String, schema: String)
+@MCPResource(scheme: String)
+@MCPParam(name: String)
+```
+
+## Performance Considerations
+
+- **Discovery**: Sub-100ms server discovery target
+- **Memory**: Efficient AIDL pooling, avoid memory leaks
+- **Battery**: HTTP server only when LLM active
+- **Threading**: Use big cores only for inference operations
+- **Caching**: Cache server capabilities and connections
+
+## Debugging
+
+### Logging
+Enable debug logging:
+```kotlin
+MobileMCPClient.enableDebugLogging(true)
+```
+
+### ADB Commands
+```bash
+# List MCP services
+adb shell dumpsys package queries | grep mmcp
+
+# Check running services
+adb shell dumpsys activity services | grep MCP
+```
+
+### Testing Tools
+- MCP Server validator (planned)
+- HTTP endpoint testing utilities
+- AIDL connection debugging
+
+## Contributing to Android Implementation
+
+See the [main contributing guide](../README.md#contributing) for general information.
+
+**Android-specific guidelines:**
+- Follow Android Kotlin style guide
+- Use ktlint for formatting: `./gradlew ktlintFormat`
+- Document public APIs with KDoc
+- Add unit tests for new features
+- Test on multiple Android versions (API 24+)
+
+## Troubleshooting
+
+### Common Issues
+
+**Server Discovery Fails**
+- Check package visibility queries in manifest
+- Verify Intent filters are correctly declared
+- Ensure target app is installed and MCP service enabled
+
+**HTTP Server Won't Start**
+- Check port availability (11434)
+- Verify network permissions
+- Ensure not running on main thread
+
+**AIDL Binding Fails**
+- Check service is exported and running
+- Verify permissions are granted
+- Test with `adb shell dumpsys activity services`
+
+## Roadmap
+
+- ✅ Core architecture and HTTP server
+- 🔄 AIDL discovery implementation
+- ⏳ Annotation processor and code generation
+- ⏳ Gradle plugin for build integration
+- ⏳ Advanced security and permission management
+- ⏳ Performance optimization and caching
+- ⏳ Developer tools and debugging utilities
+
+---
+
+📖 **Next Steps:** [Architecture Deep-Dive](../docs/mobile-mcp-architecture.md) | [Main Project](../README.md)
