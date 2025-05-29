@@ -19,8 +19,12 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MMCP Example"
+rootProject.name = "MMCP-Android"
 include(":example")
 include(":mmcp-client-android")
 include(":mmcp-server-android")
-include(":shared:MMCPCore:mmcp")
+includeBuild("../shared/MMCPCore") {
+    dependencySubstitution {
+        substitute(module("io.rosenpin.mcp:mmcp")).using(project(":mmcp"))
+    }
+}

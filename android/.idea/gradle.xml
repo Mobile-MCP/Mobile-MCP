@@ -4,6 +4,18 @@
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
+        <compositeConfiguration>
+          <compositeBuild compositeDefinitionSource="SCRIPT">
+            <builds>
+              <build path="$PROJECT_DIR$/../shared/MMCPCore" name="MMCP_Core">
+                <projects>
+                  <project path="$PROJECT_DIR$/../shared/MMCPCore" />
+                  <project path="$PROJECT_DIR$/../shared/MMCPCore/mmcp" />
+                </projects>
+              </build>
+            </builds>
+          </compositeBuild>
+        </compositeConfiguration>
         <option name="testRunner" value="CHOOSE_PER_TEST" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="gradleJvm" value="#GRADLE_LOCAL_JAVA_HOME" />
@@ -13,6 +25,8 @@
             <option value="$PROJECT_DIR$/example" />
             <option value="$PROJECT_DIR$/mmcp-client-android" />
             <option value="$PROJECT_DIR$/mmcp-server-android" />
+            <option value="$PROJECT_DIR$/../shared/MMCPCore" />
+            <option value="$PROJECT_DIR$/../shared/MMCPCore/mmcp" />
           </set>
         </option>
       </GradleProjectSettings>

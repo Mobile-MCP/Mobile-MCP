@@ -33,7 +33,7 @@ android {
 
 dependencies {
     // Shared KMP module
-    implementation(project(":shared:MMCPCore:mmcp"))
+    implementation("io.rosenpin.mcp:mmcp")
     
     // Android core
     implementation(libs.androidx.core.ktx)
