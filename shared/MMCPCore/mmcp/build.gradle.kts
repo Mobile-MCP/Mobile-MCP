@@ -49,7 +49,7 @@ kotlin {
 }
 
 android {
-    namespace = "io.rosenpin.mcp.mmcpcore"
+    namespace = "io.rosenpin.mmcp.mmcpcore"
     compileSdk = 35
     defaultConfig {
         minSdk = 33

@@ -1,4 +1,4 @@
-package io.rosenpin.mcp.server;
+package io.rosenpin.mmcp.server;
 
 /**
  * Callback interface for receiving asynchronous responses and notifications from MCP servers

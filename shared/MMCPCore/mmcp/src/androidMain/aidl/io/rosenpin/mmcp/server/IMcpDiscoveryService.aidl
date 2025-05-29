@@ -1,4 +1,4 @@
-package io.rosenpin.mcp.server;
+package io.rosenpin.mmcp.server;
 
 /**
  * MCP Discovery Service interface for finding available MCP servers

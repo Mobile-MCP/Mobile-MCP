@@ -1,4 +1,4 @@
-package io.rosenpin.mcp.mmcpcore
+package io.rosenpin.mmcp.mmcpcore
 
 interface Platform {
     val name: String

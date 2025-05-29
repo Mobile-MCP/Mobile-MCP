@@ -1,4 +1,4 @@
-package io.rosenpin.mcp.server
+package io.rosenpin.mmcp.server
 
 import android.os.Parcel
 import android.os.Parcelable

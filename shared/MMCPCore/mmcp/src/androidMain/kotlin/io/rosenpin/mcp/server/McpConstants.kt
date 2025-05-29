@@ -1,4 +1,4 @@
-package io.rosenpin.mcp.server
+package io.rosenpin.mmcp.server
 
 /**
  * Constants used throughout the MCP framework for Android
@@ -7,11 +7,11 @@ package io.rosenpin.mcp.server
 object McpConstants {
     
     // Service Actions for AIDL binding
-    const val ACTION_MCP_SERVICE = "io.rosenpin.mcp.action.MCP_SERVICE"
-    const val ACTION_MCP_TOOL_SERVICE = "io.rosenpin.mcp.action.MCP_TOOL_SERVICE"
-    const val ACTION_MCP_RESOURCE_SERVICE = "io.rosenpin.mcp.action.MCP_RESOURCE_SERVICE"
-    const val ACTION_MCP_PROMPT_SERVICE = "io.rosenpin.mcp.action.MCP_PROMPT_SERVICE"
-    const val ACTION_MCP_DISCOVERY_SERVICE = "io.rosenpin.mcp.action.MCP_DISCOVERY_SERVICE"
+    const val ACTION_MCP_SERVICE = "io.rosenpin.mmcp.action.MCP_SERVICE"
+    const val ACTION_MCP_TOOL_SERVICE = "io.rosenpin.mmcp.action.MCP_TOOL_SERVICE"
+    const val ACTION_MCP_RESOURCE_SERVICE = "io.rosenpin.mmcp.action.MCP_RESOURCE_SERVICE"
+    const val ACTION_MCP_PROMPT_SERVICE = "io.rosenpin.mmcp.action.MCP_PROMPT_SERVICE"
+    const val ACTION_MCP_DISCOVERY_SERVICE = "io.rosenpin.mmcp.action.MCP_DISCOVERY_SERVICE"
     
     // MCP Protocol Version
     const val MCP_PROTOCOL_VERSION = "2024-11-05"
@@ -45,7 +45,7 @@ object McpConstants {
     }
     
     // Permission for MCP service access
-    const val PERMISSION_MCP_SERVICE = "io.rosenpin.mcp.permission.ACCESS_MCP_SERVICE"
+    const val PERMISSION_MCP_SERVICE = "io.rosenpin.mmcp.permission.ACCESS_MCP_SERVICE"
     
     // Timeouts and limits
     const val DEFAULT_CONNECTION_TIMEOUT_MS = 10_000L

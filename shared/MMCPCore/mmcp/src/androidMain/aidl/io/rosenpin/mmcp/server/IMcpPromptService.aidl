@@ -1,6 +1,6 @@
-package io.rosenpin.mcp.server;
+package io.rosenpin.mmcp.server;
 
-import io.rosenpin.mcp.server.IMcpServiceCallback;
+import io.rosenpin.mmcp.server.IMcpServiceCallback;
 
 /**
  * MCP Prompt Service interface for accessing prompt templates

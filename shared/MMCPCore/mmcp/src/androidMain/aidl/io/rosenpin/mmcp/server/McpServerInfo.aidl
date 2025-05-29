@@ -1,4 +1,4 @@
-package io.rosenpin.mcp.server;
+package io.rosenpin.mmcp.server;
 
 /**
  * Parcelable data class for MCP server information

@@ -1,4 +1,4 @@
-package io.rosenpin.mcp.mmcpcore.protocol
+package io.rosenpin.mmcp.mmcpcore.protocol
 
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.async

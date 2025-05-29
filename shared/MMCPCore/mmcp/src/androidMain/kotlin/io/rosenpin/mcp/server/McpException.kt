@@ -1,4 +1,4 @@
-package io.rosenpin.mcp.server
+package io.rosenpin.mmcp.server
 
 /**
  * Exception class for MCP-specific errors
