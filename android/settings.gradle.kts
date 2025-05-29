@@ -20,6 +20,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "MMCP Example"
-include(":app")
+include(":example")
 include(":mmcp-client-android")
 include(":mmcp-server-android")

@@ -1,18 +1,14 @@
 plugins {
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
 }
 
 android {
-    namespace = "io.rosenpin.mcp.mmcp_client_android"
+    namespace = "io.rosenpin.mmcp.client"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "io.rosenpin.mcp.mmcp_client_android"
         minSdk = 33
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -36,11 +32,21 @@ android {
 }
 
 dependencies {
-
+    // Android core
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
+    
+    // MCP framework dependencies
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.gson)
+    implementation(libs.nanohttpd)
+    
+    // Testing
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.mockk.android)
 }
