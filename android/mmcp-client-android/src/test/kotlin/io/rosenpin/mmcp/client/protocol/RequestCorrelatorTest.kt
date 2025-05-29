@@ -1,5 +1,6 @@
 package io.rosenpin.mmcp.client.protocol
 
+import io.rosenpin.mcp.mmcpcore.protocol.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay

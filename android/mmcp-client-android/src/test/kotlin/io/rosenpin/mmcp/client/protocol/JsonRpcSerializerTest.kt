@@ -1,5 +1,6 @@
 package io.rosenpin.mmcp.client.protocol
 
+import io.rosenpin.mcp.mmcpcore.protocol.*
 import org.junit.Test
 import org.junit.Assert.*
 import org.junit.Before

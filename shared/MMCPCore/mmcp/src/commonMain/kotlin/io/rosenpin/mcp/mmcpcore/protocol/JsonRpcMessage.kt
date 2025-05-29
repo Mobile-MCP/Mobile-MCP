@@ -1,4 +1,4 @@
-package io.rosenpin.mmcp.client.protocol
+package io.rosenpin.mcp.mmcpcore.protocol
 
 /**
  * JSON-RPC 2.0 Request message

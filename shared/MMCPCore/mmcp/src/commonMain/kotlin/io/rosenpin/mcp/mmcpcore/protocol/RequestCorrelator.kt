@@ -1,4 +1,4 @@
-package io.rosenpin.mmcp.client.protocol
+package io.rosenpin.mcp.mmcpcore.protocol
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -6,11 +6,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * Manages request/response correlation and timeouts for JSON-RPC messages
+ * Uses KMP coroutines for cross-platform async support
  */
 class RequestCorrelator(
     private val defaultTimeoutMs: Long = 30_000L, // 30 seconds default timeout
@@ -22,13 +23,15 @@ class RequestCorrelator(
         val timeoutJob: Job
     )
     
-    private val pendingRequests = ConcurrentHashMap<String, PendingRequest>()
+    // Using a simple Map for KMP compatibility instead of ConcurrentHashMap
+    private val pendingRequests = mutableMapOf<String, PendingRequest>()
     
     /**
-     * Generate a unique request ID
+     * Generate a unique request ID using KMP UUID
      */
+    @OptIn(ExperimentalUuidApi::class)
     fun generateRequestId(): String {
-        return UUID.randomUUID().toString()
+        return Uuid.random().toString()
     }
     
     /**
@@ -48,7 +51,9 @@ class RequestCorrelator(
             delay(timeoutMs)
             
             // Remove from pending and complete with timeout error
-            pendingRequests.remove(id)?.let {
+            synchronized(pendingRequests) {
+                pendingRequests.remove(id)
+            }?.let {
                 if (!deferred.isCompleted) {
                     val timeoutError = JsonRpcError(
                         code = JsonRpcError.MCP_TIMEOUT_ERROR,
@@ -65,7 +70,9 @@ class RequestCorrelator(
             }
         }
         
-        pendingRequests[id] = PendingRequest(deferred, timeoutJob)
+        synchronized(pendingRequests) {
+            pendingRequests[id] = PendingRequest(deferred, timeoutJob)
+        }
         
         return deferred
     }
@@ -75,13 +82,17 @@ class RequestCorrelator(
      * @param response The JSON-RPC response
      */
     fun completeRequest(response: JsonRpcResponse) {
-        pendingRequests.remove(response.id)?.let { pendingRequest ->
+        val pendingRequest = synchronized(pendingRequests) {
+            pendingRequests.remove(response.id)
+        }
+        
+        pendingRequest?.let { 
             // Cancel timeout job
-            pendingRequest.timeoutJob.cancel()
+            it.timeoutJob.cancel()
             
             // Complete the deferred
-            if (!pendingRequest.deferred.isCompleted) {
-                pendingRequest.deferred.complete(response)
+            if (!it.deferred.isCompleted) {
+                it.deferred.complete(response)
             }
         }
     }
@@ -92,13 +103,17 @@ class RequestCorrelator(
      * @param error The error that occurred
      */
     fun failRequest(id: String, error: Throwable) {
-        pendingRequests.remove(id)?.let { pendingRequest ->
+        val pendingRequest = synchronized(pendingRequests) {
+            pendingRequests.remove(id)
+        }
+        
+        pendingRequest?.let {
             // Cancel timeout job
-            pendingRequest.timeoutJob.cancel()
+            it.timeoutJob.cancel()
             
             // Complete exceptionally
-            if (!pendingRequest.deferred.isCompleted) {
-                pendingRequest.deferred.completeExceptionally(error)
+            if (!it.deferred.isCompleted) {
+                it.deferred.completeExceptionally(error)
             }
         }
     }
@@ -108,11 +123,15 @@ class RequestCorrelator(
      * @param id Request ID
      */
     fun cancelRequest(id: String) {
-        pendingRequests.remove(id)?.let { pendingRequest ->
-            pendingRequest.timeoutJob.cancel()
+        val pendingRequest = synchronized(pendingRequests) {
+            pendingRequests.remove(id)
+        }
+        
+        pendingRequest?.let {
+            it.timeoutJob.cancel()
             
-            if (!pendingRequest.deferred.isCompleted) {
-                pendingRequest.deferred.cancel()
+            if (!it.deferred.isCompleted) {
+                it.deferred.cancel()
             }
         }
     }
@@ -120,14 +139,19 @@ class RequestCorrelator(
     /**
      * Get the number of pending requests
      */
-    fun getPendingRequestCount(): Int = pendingRequests.size
+    fun getPendingRequestCount(): Int = synchronized(pendingRequests) {
+        pendingRequests.size
+    }
     
     /**
      * Cancel all pending requests
      */
     fun cancelAllRequests() {
-        val requests = pendingRequests.values.toList()
-        pendingRequests.clear()
+        val requests = synchronized(pendingRequests) {
+            val copy = pendingRequests.values.toList()
+            pendingRequests.clear()
+            copy
+        }
         
         requests.forEach { pendingRequest ->
             pendingRequest.timeoutJob.cancel()
@@ -140,5 +164,7 @@ class RequestCorrelator(
     /**
      * Check if a request is pending
      */
-    fun isRequestPending(id: String): Boolean = pendingRequests.containsKey(id)
+    fun isRequestPending(id: String): Boolean = synchronized(pendingRequests) {
+        pendingRequests.containsKey(id)
+    }
 }

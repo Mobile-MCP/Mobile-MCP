@@ -1,9 +1,10 @@
-package io.rosenpin.mmcp.client.protocol
+package io.rosenpin.mcp.mmcpcore.protocol
 
 import kotlinx.coroutines.CompletableDeferred
 
 /**
  * Core MCP protocol handler that manages the protocol state machine
+ * Cross-platform implementation using KMP
  */
 class McpProtocolCore {
     

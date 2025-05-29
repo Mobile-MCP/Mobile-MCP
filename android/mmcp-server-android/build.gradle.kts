@@ -32,13 +32,15 @@ android {
 }
 
 dependencies {
+    // Shared KMP module
+    implementation(project(":shared:MMCPCore:mmcp"))
+    
     // Android core
     implementation(libs.androidx.core.ktx)
     
     // MCP framework dependencies
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.gson)
     
     // Testing
     testImplementation(libs.junit)

@@ -23,3 +23,4 @@ rootProject.name = "MMCP Example"
 include(":example")
 include(":mmcp-client-android")
 include(":mmcp-server-android")
+include(":shared:MMCPCore:mmcp")

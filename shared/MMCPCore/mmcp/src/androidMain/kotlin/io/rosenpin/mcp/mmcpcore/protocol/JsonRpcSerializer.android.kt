@@ -1,13 +1,13 @@
-package io.rosenpin.mmcp.client.protocol
+package io.rosenpin.mcp.mmcpcore.protocol
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonSyntaxException
 
 /**
- * Handles JSON-RPC 2.0 message serialization and deserialization
+ * Android implementation of JsonRpcSerializer using Gson
  */
-class JsonRpcSerializer {
+actual class JsonRpcSerializer {
     
     private val gson: Gson = GsonBuilder()
         .serializeNulls()
@@ -16,7 +16,7 @@ class JsonRpcSerializer {
     /**
      * Serialize any object to JSON string
      */
-    fun serialize(message: Any): String {
+    actual fun serialize(message: Any): String {
         return gson.toJson(message)
     }
     
@@ -24,7 +24,7 @@ class JsonRpcSerializer {
      * Deserialize JSON string to JsonRpcRequest
      * @throws JsonSyntaxException if JSON is malformed
      */
-    fun deserializeRequest(json: String): JsonRpcRequest {
+    actual fun deserializeRequest(json: String): JsonRpcRequest {
         try {
             return gson.fromJson(json, JsonRpcRequest::class.java)
                 ?: throw JsonSyntaxException("Null result from JSON parsing")
@@ -37,7 +37,7 @@ class JsonRpcSerializer {
      * Deserialize JSON string to JsonRpcResponse
      * @throws JsonSyntaxException if JSON is malformed
      */
-    fun deserializeResponse(json: String): JsonRpcResponse {
+    actual fun deserializeResponse(json: String): JsonRpcResponse {
         try {
             return gson.fromJson(json, JsonRpcResponse::class.java)
                 ?: throw JsonSyntaxException("Null result from JSON parsing")
@@ -50,7 +50,7 @@ class JsonRpcSerializer {
      * Try to deserialize as either request or response
      * @return Pair<JsonRpcRequest?, JsonRpcResponse?> where exactly one will be non-null
      */
-    fun deserializeMessage(json: String): Pair<JsonRpcRequest?, JsonRpcResponse?> {
+    actual fun deserializeMessage(json: String): Pair<JsonRpcRequest?, JsonRpcResponse?> {
         return try {
             // Try as response first (has result or error field)
             if (json.contains("\"result\"") || json.contains("\"error\"")) {
@@ -66,7 +66,7 @@ class JsonRpcSerializer {
     /**
      * Create a JSON-RPC error response
      */
-    fun createErrorResponse(requestId: String, code: Int, message: String, data: Any? = null): JsonRpcResponse {
+    actual fun createErrorResponse(requestId: String, code: Int, message: String, data: Any?): JsonRpcResponse {
         return JsonRpcResponse(
             id = requestId,
             result = null,
@@ -77,7 +77,7 @@ class JsonRpcSerializer {
     /**
      * Create a JSON-RPC success response
      */
-    fun createSuccessResponse(requestId: String, result: Any): JsonRpcResponse {
+    actual fun createSuccessResponse(requestId: String, result: Any): JsonRpcResponse {
         return JsonRpcResponse(
             id = requestId,
             result = result,

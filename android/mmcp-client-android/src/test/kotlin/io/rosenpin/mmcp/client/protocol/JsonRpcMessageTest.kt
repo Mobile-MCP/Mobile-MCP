@@ -1,5 +1,6 @@
 package io.rosenpin.mmcp.client.protocol
 
+import io.rosenpin.mcp.mmcpcore.protocol.*
 import com.google.gson.Gson
 import org.junit.Test
 import org.junit.Assert.*
