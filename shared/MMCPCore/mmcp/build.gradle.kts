@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
+    kotlin("plugin.serialization") version "1.9.10"
 }
 
 kotlin {
@@ -29,10 +30,20 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            //put your multiplatform dependencies here
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
         }
+        
+        androidMain.dependencies {
+            implementation("com.google.code.gson:gson:2.10.1")
+        }
+        
+        iosMain.dependencies {
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+        }
+        
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
         }
     }
 }
