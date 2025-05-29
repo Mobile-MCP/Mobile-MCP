@@ -1,4 +1,4 @@
-package io.rosenpin.mcp.mmcpcore.protocol
+package io.rosenpin.mmcp.mmcpcore.protocol
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder

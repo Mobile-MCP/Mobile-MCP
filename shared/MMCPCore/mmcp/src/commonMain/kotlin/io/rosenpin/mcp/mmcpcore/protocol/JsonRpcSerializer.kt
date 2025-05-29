@@ -1,4 +1,4 @@
-package io.rosenpin.mcp.mmcpcore.protocol
+package io.rosenpin.mmcp.mmcpcore.protocol
 
 /**
  * Cross-platform JSON-RPC 2.0 message serialization interface

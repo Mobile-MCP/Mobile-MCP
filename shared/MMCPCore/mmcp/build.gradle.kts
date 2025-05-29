@@ -49,7 +49,7 @@ kotlin {
 }
 
 android {
-    namespace = "io.rosenpin.mcp.mmcpcore"
+    namespace = "io.rosenpin.mmcp.mmcpcore"
     compileSdk = 35
     defaultConfig {
         minSdk = 33
@@ -57,5 +57,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+    }
+    
+    // Enable AIDL support for Android-specific MCP interfaces
+    buildFeatures {
+        aidl = true
     }
 }

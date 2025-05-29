@@ -1,4 +1,4 @@
-package io.rosenpin.mcp.mmcpcore.protocol
+package io.rosenpin.mmcp.mmcpcore.protocol
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString

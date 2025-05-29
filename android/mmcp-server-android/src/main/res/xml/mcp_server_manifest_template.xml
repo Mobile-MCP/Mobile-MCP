@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    MCP Server Manifest Template
+    
+    This template shows how MCP servers should declare their services in AndroidManifest.xml
+    Copy the relevant service declarations to your app's manifest and modify as needed.
+    
+    Example AndroidManifest.xml service declarations:
+-->
+<resources>
+    <!--
+    <service
+        android:name=".YourMcpService"
+        android:exported="true"
+        android:permission="io.rosenpin.mmcp.permission.ACCESS_MCP_SERVICE">
+        <intent-filter>
+            <action android:name="io.rosenpin.mmcp.action.MCP_SERVICE" />
+            <category android:name="android.intent.category.DEFAULT" />
+        </intent-filter>
+        <meta-data
+            android:name="mcp.server.name"
+            android:value="Your Server Name" />
+        <meta-data
+            android:name="mcp.server.version"
+            android:value="1.0.0" />
+        <meta-data
+            android:name="mcp.server.description"
+            android:value="Description of your MCP server" />
+        <meta-data
+            android:name="mcp.server.capabilities"
+            android:value="tools,resources,prompts" />
+        <meta-data
+            android:name="mcp.protocol.version"
+            android:value="2024-11-05" />
+    </service>
+    
+    <service
+        android:name=".YourMcpToolService"
+        android:exported="true"
+        android:permission="io.rosenpin.mmcp.permission.ACCESS_MCP_SERVICE">
+        <intent-filter>
+            <action android:name="io.rosenpin.mmcp.action.MCP_TOOL_SERVICE" />
+            <category android:name="android.intent.category.DEFAULT" />
+        </intent-filter>
+    </service>
+    
+    <service
+        android:name=".YourMcpResourceService"
+        android:exported="true"
+        android:permission="io.rosenpin.mmcp.permission.ACCESS_MCP_SERVICE">
+        <intent-filter>
+            <action android:name="io.rosenpin.mmcp.action.MCP_RESOURCE_SERVICE" />
+            <category android:name="android.intent.category.DEFAULT" />
+        </intent-filter>
+    </service>
+    
+    <service
+        android:name=".YourMcpPromptService"
+        android:exported="true"
+        android:permission="io.rosenpin.mmcp.permission.ACCESS_MCP_SERVICE">
+        <intent-filter>
+            <action android:name="io.rosenpin.mmcp.action.MCP_PROMPT_SERVICE" />
+            <category android:name="android.intent.category.DEFAULT" />
+        </intent-filter>
+    </service>
+    -->
+</resources>

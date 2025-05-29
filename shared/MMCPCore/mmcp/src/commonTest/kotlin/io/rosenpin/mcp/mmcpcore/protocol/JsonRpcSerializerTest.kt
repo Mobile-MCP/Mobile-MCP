@@ -1,4 +1,4 @@
-package io.rosenpin.mcp.mmcpcore.protocol
+package io.rosenpin.mmcp.mmcpcore.protocol
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
