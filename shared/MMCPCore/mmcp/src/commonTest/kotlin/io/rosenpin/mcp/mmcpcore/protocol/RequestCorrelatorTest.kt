@@ -91,8 +91,8 @@ class RequestCorrelatorTest {
         assertTrue(deferred1.isCompleted)
         assertTrue(deferred2.isCompleted)
         
-        assertEquals("result1", deferred1.await())
-        assertEquals("result2", deferred2.await())
+        assertEquals("result1", deferred1.await().result)
+        assertEquals("result2", deferred2.await().result)
     }
 
     @Test
@@ -128,7 +128,7 @@ class RequestCorrelatorTest {
         assertEquals(1, correlator.getPendingRequestCount())
         
         correlator.completeRequest(response)
-        assertEquals("result", deferred1.await())
+        assertEquals("result", deferred1.await().result)
         
         assertEquals(0, correlator.getPendingRequestCount())
         
@@ -139,7 +139,7 @@ class RequestCorrelatorTest {
         assertEquals(1, correlator.getPendingRequestCount())
         
         correlator.completeRequest(response)
-        assertEquals("result", deferred2.await())
+        assertEquals("result", deferred2.await().result)
         
         assertEquals(0, correlator.getPendingRequestCount())
     }
