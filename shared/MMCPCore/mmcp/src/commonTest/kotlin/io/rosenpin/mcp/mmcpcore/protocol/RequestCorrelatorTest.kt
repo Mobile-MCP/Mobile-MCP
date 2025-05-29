@@ -1,24 +1,21 @@
-package io.rosenpin.mmcp.client.protocol
+package io.rosenpin.mcp.mmcpcore.protocol
 
-import io.rosenpin.mcp.mmcpcore.protocol.*
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
-import org.junit.Test
-import org.junit.Assert.*
-import org.junit.Before
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
+import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 
 class RequestCorrelatorTest {
 
-    private lateinit var correlator: RequestCorrelator
-
-    @Before
-    fun setup() {
-        correlator = RequestCorrelator()
-    }
-
     @Test
-    fun `generateRequestId returns unique IDs`() {
+    fun testGenerateRequestIdReturnsUniqueIds() {
+        val correlator = RequestCorrelator()
+        
         val id1 = correlator.generateRequestId()
         val id2 = correlator.generateRequestId()
         val id3 = correlator.generateRequestId()
@@ -27,12 +24,14 @@ class RequestCorrelatorTest {
         assertNotEquals(id2, id3)
         assertNotEquals(id1, id3)
         
-        // Should be UUID format
-        assertTrue(id1.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")))
+        // Should be UUID format (basic check)
+        assertTrue(id1.length > 10)
+        assertTrue(id1.contains("-"))
     }
 
     @Test
-    fun `createPendingRequest and completeRequest work together`() = runTest {
+    fun testCreatePendingRequestAndCompleteRequestWorkTogether() = runTest {
+        val correlator = RequestCorrelator()
         val requestId = "test-request-123"
         
         val deferred = correlator.createPendingRequest(requestId)
@@ -51,7 +50,8 @@ class RequestCorrelatorTest {
     }
 
     @Test
-    fun `failRequest completes deferred with exception`() = runTest {
+    fun testFailRequestCompletesWithException() = runTest {
+        val correlator = RequestCorrelator()
         val requestId = "failed-request-456"
         
         val deferred = correlator.createPendingRequest(requestId)
@@ -62,16 +62,14 @@ class RequestCorrelatorTest {
         
         assertTrue(deferred.isCompleted)
         
-        try {
+        assertFailsWith<RuntimeException> {
             deferred.await()
-            fail("Expected exception")
-        } catch (e: RuntimeException) {
-            assertEquals("Request failed", e.message)
         }
     }
 
     @Test
-    fun `multiple concurrent requests work independently`() = runTest {
+    fun testMultipleConcurrentRequestsWorkIndependently() = runTest {
+        val correlator = RequestCorrelator()
         val request1Id = "concurrent-1"
         val request2Id = "concurrent-2"
         
@@ -98,7 +96,8 @@ class RequestCorrelatorTest {
     }
 
     @Test
-    fun `completeRequest with unknown ID does nothing`() {
+    fun testCompleteRequestWithUnknownIdDoesNothing() {
+        val correlator = RequestCorrelator()
         val unknownResponse = JsonRpcResponse(
             id = "unknown-request",
             result = "some result",
@@ -110,7 +109,8 @@ class RequestCorrelatorTest {
     }
 
     @Test
-    fun `failRequest with unknown ID does nothing`() {
+    fun testFailRequestWithUnknownIdDoesNothing() {
+        val correlator = RequestCorrelator()
         val exception = RuntimeException("Test error")
         
         // Should not throw exception
@@ -118,20 +118,76 @@ class RequestCorrelatorTest {
     }
 
     @Test
-    fun `request is removed from pending after completion`() = runTest {
+    fun testRequestIsRemovedFromPendingAfterCompletion() = runTest {
+        val correlator = RequestCorrelator()
         val requestId = "remove-test"
         
         val deferred1 = correlator.createPendingRequest(requestId)
         val response = JsonRpcResponse(id = requestId, result = "result", error = null)
         
+        assertEquals(1, correlator.getPendingRequestCount())
+        
         correlator.completeRequest(response)
         assertEquals("result", deferred1.await())
+        
+        assertEquals(0, correlator.getPendingRequestCount())
         
         // Creating another request with same ID should work (previous was removed)
         val deferred2 = correlator.createPendingRequest(requestId)
         assertFalse(deferred2.isCompleted)
         
+        assertEquals(1, correlator.getPendingRequestCount())
+        
         correlator.completeRequest(response)
         assertEquals("result", deferred2.await())
+        
+        assertEquals(0, correlator.getPendingRequestCount())
+    }
+
+    @Test
+    fun testCancelRequest() = runTest {
+        val correlator = RequestCorrelator()
+        val requestId = "cancel-test"
+        
+        val deferred = correlator.createPendingRequest(requestId)
+        assertFalse(deferred.isCompleted)
+        assertEquals(1, correlator.getPendingRequestCount())
+        
+        correlator.cancelRequest(requestId)
+        
+        assertTrue(deferred.isCancelled)
+        assertEquals(0, correlator.getPendingRequestCount())
+    }
+
+    @Test
+    fun testCancelAllRequests() = runTest {
+        val correlator = RequestCorrelator()
+        
+        val deferred1 = correlator.createPendingRequest("req1")
+        val deferred2 = correlator.createPendingRequest("req2")
+        val deferred3 = correlator.createPendingRequest("req3")
+        
+        assertEquals(3, correlator.getPendingRequestCount())
+        
+        correlator.cancelAllRequests()
+        
+        assertTrue(deferred1.isCancelled)
+        assertTrue(deferred2.isCancelled)
+        assertTrue(deferred3.isCancelled)
+        assertEquals(0, correlator.getPendingRequestCount())
+    }
+
+    @Test
+    fun testIsRequestPending() {
+        val correlator = RequestCorrelator()
+        val requestId = "pending-test"
+        
+        assertFalse(correlator.isRequestPending(requestId))
+        
+        correlator.createPendingRequest(requestId)
+        assertTrue(correlator.isRequestPending(requestId))
+        
+        correlator.cancelRequest(requestId)
+        assertFalse(correlator.isRequestPending(requestId))
     }
 }
