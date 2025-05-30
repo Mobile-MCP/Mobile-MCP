@@ -280,87 +280,72 @@ class MCPRequestHandler(
     // Helper methods for request parsing and response creation
     
     private fun parseToolCallRequest(json: String): ToolCallRequest {
-        return try {
-            val (request, _) = jsonRpcSerializer.deserializeMessage(json)
-            if (request != null && request.method == McpMethods.TOOLS_CALL) {
-                val params = request.params ?: emptyMap()
-                val serverId = params["serverId"] as? String ?: "com.example.server"
-                val name = params["name"] as? String ?: "example_tool"
-                val arguments = params["arguments"] as? Map<String, Any> ?: emptyMap()
-                
-                ToolCallRequest(
-                    id = request.id,
-                    serverId = serverId,
-                    toolName = name,
-                    parameters = arguments
-                )
-            } else {
-                throw IllegalArgumentException("Invalid tool call request")
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse tool call request: ${e.message}")
-            ToolCallRequest(
-                id = UUID.randomUUID().toString(),
-                serverId = "com.example.server",
-                toolName = "example_tool",
-                parameters = emptyMap()
-            )
+        val (request, _) = jsonRpcSerializer.deserializeMessage(json)
+        if (request == null || request.method != McpMethods.TOOLS_CALL) {
+            throw IllegalArgumentException("Invalid JSON-RPC request or method")
         }
+        
+        val params = request.params ?: throw IllegalArgumentException("Missing required 'params' field")
+        
+        val serverId = params["serverId"] as? String
+            ?: throw IllegalArgumentException("Missing required 'serverId' parameter")
+        
+        val name = params["name"] as? String
+            ?: throw IllegalArgumentException("Missing required 'name' parameter")
+        
+        val arguments = params["arguments"] as? Map<String, Any> ?: emptyMap()
+        
+        return ToolCallRequest(
+            id = request.id,
+            serverId = serverId,
+            toolName = name,
+            parameters = arguments
+        )
     }
     
     private fun parseResourceReadRequest(json: String): ResourceReadRequest {
-        return try {
-            val (request, _) = jsonRpcSerializer.deserializeMessage(json)
-            if (request != null && request.method == McpMethods.RESOURCES_READ) {
-                val params = request.params ?: emptyMap()
-                val serverId = params["serverId"] as? String ?: "com.example.server"
-                val uri = params["uri"] as? String ?: "example://resource"
-                
-                ResourceReadRequest(
-                    id = request.id,
-                    serverId = serverId,
-                    uri = uri
-                )
-            } else {
-                throw IllegalArgumentException("Invalid resource read request")
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse resource read request: ${e.message}")
-            ResourceReadRequest(
-                id = UUID.randomUUID().toString(),
-                serverId = "com.example.server",
-                uri = "example://resource"
-            )
+        val (request, _) = jsonRpcSerializer.deserializeMessage(json)
+        if (request == null || request.method != McpMethods.RESOURCES_READ) {
+            throw IllegalArgumentException("Invalid JSON-RPC request or method")
         }
+        
+        val params = request.params ?: throw IllegalArgumentException("Missing required 'params' field")
+        
+        val serverId = params["serverId"] as? String
+            ?: throw IllegalArgumentException("Missing required 'serverId' parameter")
+        
+        val uri = params["uri"] as? String
+            ?: throw IllegalArgumentException("Missing required 'uri' parameter")
+        
+        return ResourceReadRequest(
+            id = request.id,
+            serverId = serverId,
+            uri = uri
+        )
     }
     
     private fun parsePromptGetRequest(json: String): PromptGetRequest {
-        return try {
-            val (request, _) = jsonRpcSerializer.deserializeMessage(json)
-            if (request != null && request.method == McpMethods.PROMPTS_GET) {
-                val params = request.params ?: emptyMap()
-                val serverId = params["serverId"] as? String ?: "com.example.server"
-                val name = params["name"] as? String ?: "example_prompt"
-                val arguments = params["arguments"] as? Map<String, Any> ?: emptyMap()
-                
-                PromptGetRequest(
-                    id = request.id,
-                    serverId = serverId,
-                    promptName = name,
-                    parameters = arguments
-                )
-            } else {
-                throw IllegalArgumentException("Invalid prompt get request")
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse prompt get request: ${e.message}")
-            PromptGetRequest(
-                id = UUID.randomUUID().toString(),
-                serverId = "com.example.server",
-                promptName = "example_prompt",
-                parameters = emptyMap()
-            )
+        val (request, _) = jsonRpcSerializer.deserializeMessage(json)
+        if (request == null || request.method != McpMethods.PROMPTS_GET) {
+            throw IllegalArgumentException("Invalid JSON-RPC request or method")
         }
+        
+        val params = request.params ?: throw IllegalArgumentException("Missing required 'params' field")
+        
+        val serverId = params["serverId"] as? String
+            ?: throw IllegalArgumentException("Missing required 'serverId' parameter")
+        
+        val name = params["name"] as? String
+            ?: throw IllegalArgumentException("Missing required 'name' parameter")
+        
+        val arguments = params["arguments"] as? Map<String, Any> ?: emptyMap()
+        
+        return PromptGetRequest(
+            id = request.id,
+            serverId = serverId,
+            promptName = name,
+            parameters = arguments
+        )
     }
     
     

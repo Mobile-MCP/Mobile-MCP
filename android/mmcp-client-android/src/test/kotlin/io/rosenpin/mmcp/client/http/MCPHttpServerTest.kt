@@ -153,7 +153,7 @@ class MCPHttpServerTest {
         every { connectionManager.getConnection("test") } returns null
         
         val requestHandler = MCPRequestHandler(discovery, connectionManager)
-        val requestBody = """{"serverId": "test", "toolName": "test_tool", "parameters": {}}"""
+        val requestBody = """{"jsonrpc":"2.0","id":"test-1","method":"tools/call","params":{"serverId":"test","name":"test_tool","arguments":{}}}"""
         val response = requestHandler.handleToolCallSync(requestBody)
         
         assertTrue(response.contains("\"jsonrpc\":\"2.0\""))

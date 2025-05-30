@@ -96,7 +96,7 @@ class MCPRequestHandlerTest {
         
         every { connectionManager.getConnection("com.example.server") } returns connection
         
-        val requestBody = """{"serverId": "com.example.server", "toolName": "test_tool"}"""
+        val requestBody = """{"jsonrpc":"2.0","id":"test-1","method":"tools/call","params":{"serverId":"com.example.server","name":"test_tool"}}"""
         val response = requestHandler.handleToolCallSync(requestBody)
         
         assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
@@ -141,7 +141,7 @@ class MCPRequestHandlerTest {
         
         every { connectionManager.getConnection("com.example.server") } returns connection
         
-        val requestBody = """{"serverId": "com.example.server", "uri": "test://resource"}"""
+        val requestBody = """{"jsonrpc":"2.0","id":"test-1","method":"resources/read","params":{"serverId":"com.example.server","uri":"test://resource"}}"""
         val response = requestHandler.handleResourceReadSync(requestBody)
         
         assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
@@ -186,7 +186,7 @@ class MCPRequestHandlerTest {
         
         every { connectionManager.getConnection("com.example.server") } returns connection
         
-        val requestBody = """{"serverId": "com.example.server", "promptName": "test_prompt"}"""
+        val requestBody = """{"jsonrpc":"2.0","id":"test-1","method":"prompts/get","params":{"serverId":"com.example.server","name":"test_prompt"}}"""
         val response = requestHandler.handlePromptGetSync(requestBody)
         
         assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
