@@ -41,7 +41,7 @@ dependencies {
     // MCP framework dependencies
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
-    implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.22")
+    implementation(libs.kotlin.reflect)
     
     // Testing
     testImplementation(libs.junit)
