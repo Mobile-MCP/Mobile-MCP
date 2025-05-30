@@ -44,16 +44,40 @@ data class JsonRpcError(
 }
 
 /**
- * Standard MCP method names
+ * Standard MCP method names following the MCP JSON-RPC 2.0 specification
  */
 object McpMethods {
+    // Core protocol methods
+    const val PING = "ping"
+    const val INITIALIZE = "initialize" 
+    const val CAPABILITIES = "capabilities"
+    
+    // Tool management methods
     const val TOOLS_LIST = "tools/list"
     const val TOOLS_CALL = "tools/call"
+    
+    // Resource management methods
     const val RESOURCES_LIST = "resources/list"
     const val RESOURCES_READ = "resources/read"
+    const val RESOURCES_SUBSCRIBE = "resources/subscribe"
+    const val RESOURCES_UNSUBSCRIBE = "resources/unsubscribe"
+    
+    // Prompt management methods
     const val PROMPTS_LIST = "prompts/list"
     const val PROMPTS_GET = "prompts/get"
-    const val INITIALIZE = "initialize"
-    const val PING = "ping"
-    const val CAPABILITIES = "capabilities"
+    
+    // Logging methods
+    const val LOGGING_SET_LEVEL = "logging/setLevel"
+    
+    // Notification methods
+    const val NOTIFICATIONS_TOOLS_LIST_CHANGED = "notifications/tools/list_changed"
+    const val NOTIFICATIONS_RESOURCES_LIST_CHANGED = "notifications/resources/list_changed"
+    const val NOTIFICATIONS_RESOURCES_UPDATED = "notifications/resources/updated"
+    const val NOTIFICATIONS_PROMPTS_LIST_CHANGED = "notifications/prompts/list_changed"
+    
+    // Sampling methods (for LLM completion requests)
+    const val SAMPLING_CREATE_MESSAGE = "sampling/createMessage"
+    
+    // Root listing methods
+    const val ROOTS_LIST = "roots/list"
 }
