@@ -102,7 +102,7 @@ class MCPHttpServerTest {
         val requestHandler = MCPRequestHandler(discovery, connectionManager)
         val response = requestHandler.handleToolsListSync()
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"result\""))
         assertTrue(response.contains("\"tools\""))
     }
@@ -115,7 +115,7 @@ class MCPHttpServerTest {
         val requestHandler = MCPRequestHandler(discovery, connectionManager)
         val response = requestHandler.handleResourcesListSync()
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"result\""))
         assertTrue(response.contains("\"resources\""))
     }
@@ -128,7 +128,7 @@ class MCPHttpServerTest {
         val requestHandler = MCPRequestHandler(discovery, connectionManager)
         val response = requestHandler.handlePromptsListSync()
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"result\""))
         assertTrue(response.contains("\"prompts\""))
     }
@@ -142,7 +142,7 @@ class MCPHttpServerTest {
         val requestHandler = MCPRequestHandler(discovery, connectionManager)
         val response = requestHandler.handleServersListSync()
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"result\""))
         assertTrue(response.contains("\"servers\""))
     }
@@ -153,10 +153,10 @@ class MCPHttpServerTest {
         every { connectionManager.getConnection("test") } returns null
         
         val requestHandler = MCPRequestHandler(discovery, connectionManager)
-        val requestBody = """{"serverId": "test", "toolName": "test_tool", "parameters": {}}"""
+        val requestBody = """{"jsonrpc":"2.0","id":"test-1","method":"tools/call","params":{"serverId":"test","name":"test_tool","arguments":{}}}"""
         val response = requestHandler.handleToolCallSync(requestBody)
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"error\"")) // Should error since server not connected
     }
     
@@ -167,7 +167,7 @@ class MCPHttpServerTest {
         val requestBody = """{"invalid": "json but missing required fields"}"""
         val response = requestHandler.handleToolCallSync(requestBody)
         
-        assertTrue("Should be valid JSON-RPC response", response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue("Should be valid JSON-RPC response", response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue("Should contain error for malformed request", response.contains("\"error\""))
     }
 }

@@ -10,7 +10,6 @@ import com.google.gson.JsonSyntaxException
 actual class JsonRpcSerializer {
     
     private val gson: Gson = GsonBuilder()
-        .serializeNulls()
         .create()
     
     /**
