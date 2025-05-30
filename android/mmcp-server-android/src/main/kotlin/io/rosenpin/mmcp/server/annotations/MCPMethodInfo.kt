@@ -37,7 +37,27 @@ data class ToolMethodInfo(
      * Used to correctly pass parameters when invoking the method.
      */
     val parameterMapping: Map<String, Int>
-)
+) {
+    /**
+     * Invoke this tool with MCP-compliant arguments object.
+     * Follows MCP tools/call format: {name: string, arguments?: object}
+     * 
+     * @param instance The server instance to invoke the method on
+     * @param arguments The arguments object from MCP tools/call request
+     * @return The result of the tool invocation
+     */
+    fun invoke(instance: Any, arguments: Map<String, Any>?): Any? {
+        val args = Array<Any?>(method.parameterCount) { null }
+        
+        arguments?.forEach { (paramName, value) ->
+            parameterMapping[paramName]?.let { index ->
+                args[index] = value
+            }
+        }
+        
+        return method.invoke(instance, *args)
+    }
+}
 
 /**
  * Information about an annotated resource method discovered via reflection.
@@ -104,7 +124,27 @@ data class PromptMethodInfo(
      * Mapping from MCP parameter names to method parameter indices.
      */
     val parameterMapping: Map<String, Int>
-)
+) {
+    /**
+     * Invoke this prompt with MCP-compliant arguments object.
+     * Follows MCP prompts/get format: {name: string, arguments?: object}
+     * 
+     * @param instance The server instance to invoke the method on
+     * @param arguments The arguments object from MCP prompts/get request
+     * @return The prompt result
+     */
+    fun invoke(instance: Any, arguments: Map<String, Any>?): Any? {
+        val args = Array<Any?>(method.parameterCount) { null }
+        
+        arguments?.forEach { (paramName, value) ->
+            parameterMapping[paramName]?.let { index ->
+                args[index] = value
+            }
+        }
+        
+        return method.invoke(instance, *args)
+    }
+}
 
 /**
  * Complete information about an MCP server discovered via annotation processing.

@@ -65,14 +65,26 @@ class McpProtocolCore {
                     serializer.serialize(response)
                 }
                 
-                McpMethods.CAPABILITIES -> {
+                McpMethods.INITIALIZE -> {
+                    // Initialize response includes capabilities and server info
                     val capabilities = mapOf(
                         "tools" to mapOf("listChanged" to true),
-                        "resources" to mapOf("subscribe" to true, "listChanged" to true)
+                        "resources" to mapOf("subscribe" to true, "listChanged" to true),
+                        "prompts" to mapOf("listChanged" to true),
+                        "logging" to emptyMap<String, Any>()
+                    )
+                    val serverInfo = mapOf(
+                        "name" to "MMCP Core",
+                        "version" to "1.0.0"
+                    )
+                    val result = mapOf(
+                        "protocolVersion" to "2024-11-05",
+                        "capabilities" to capabilities,
+                        "serverInfo" to serverInfo
                     )
                     val response = serializer.createSuccessResponse(
                         requestId = request.id,
-                        result = capabilities
+                        result = result
                     )
                     serializer.serialize(response)
                 }
