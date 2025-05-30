@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import io.rosenpin.mmcp.client.discovery.McpConnectionManager
 import io.rosenpin.mmcp.client.discovery.McpServerDiscovery
+import io.rosenpin.mmcp.client.http.MCPHttpServer
 import io.rosenpin.mmcp.server.McpException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +45,7 @@ class McpClient(
     
     private val discovery = McpServerDiscovery(context)
     private val connectionManager = McpConnectionManager(context)
+    private var httpServer: MCPHttpServer? = null
     
     companion object {
         private const val TAG = "McpClient"
@@ -278,6 +280,53 @@ class McpClient(
         }
     }
     
+    // HTTP Server API
+    
+    /**
+     * Start the HTTP server for LLM integration
+     */
+    suspend fun startHttpServer(port: Int = MCPHttpServer.DEFAULT_PORT): Result<Unit> {
+        return try {
+            if (httpServer?.isRunning() == true) {
+                Log.w(TAG, "HTTP server already running")
+                return Result.success(Unit)
+            }
+            
+            httpServer = MCPHttpServer(port, discovery, connectionManager)
+            val result = httpServer!!.startServer()
+            
+            if (result.isSuccess) {
+                Log.i(TAG, "MCP HTTP server started on port $port")
+                // Auto-start discovery when HTTP server starts
+                startDiscovery()
+            }
+            
+            result
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start HTTP server", e)
+            Result.failure(e)
+        }
+    }
+    
+    /**
+     * Stop the HTTP server
+     */
+    fun stopHttpServer() {
+        httpServer?.stopServer()
+        httpServer = null
+        Log.i(TAG, "MCP HTTP server stopped")
+    }
+    
+    /**
+     * Check if HTTP server is running
+     */
+    fun isHttpServerRunning(): Boolean = httpServer?.isRunning() == true
+    
+    /**
+     * Get HTTP server port
+     */
+    fun getHttpServerPort(): Int? = httpServer?.getPort()
+    
     // Lifecycle
     
     /**
@@ -297,6 +346,7 @@ class McpClient(
      */
     fun cleanup() {
         Log.d(TAG, "Cleaning up MCP client")
+        stopHttpServer()
         discovery.cleanup()
         connectionManager.cleanup()
         scope.cancel()
