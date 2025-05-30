@@ -7,6 +7,7 @@ import io.rosenpin.mmcp.mmcpcore.protocol.JsonRpcRequest
 import io.rosenpin.mmcp.mmcpcore.protocol.JsonRpcResponse
 import io.rosenpin.mmcp.mmcpcore.protocol.JsonRpcError
 import io.rosenpin.mmcp.mmcpcore.protocol.JsonRpcSerializer
+import io.rosenpin.mmcp.mmcpcore.protocol.McpMethods
 import kotlinx.coroutines.flow.first
 import java.util.UUID
 
@@ -25,6 +26,8 @@ class MCPRequestHandler(
     companion object {
         private const val TAG = "MCPRequestHandler"
     }
+    
+    private val jsonRpcSerializer = JsonRpcSerializer()
     
     // Synchronous versions for HTTP server compatibility
     // TODO: Implement proper async HTTP handling in future version
@@ -277,18 +280,25 @@ class MCPRequestHandler(
     // Helper methods for request parsing and response creation
     
     private fun parseToolCallRequest(json: String): ToolCallRequest {
-        // Basic JSON parsing for tests - TODO: Use JsonRpcSerializer in future tasks
         return try {
-            val serverId = extractJsonField(json, "serverId") ?: "com.example.server"
-            val toolName = extractJsonField(json, "toolName") ?: "example_tool"
-            ToolCallRequest(
-                id = UUID.randomUUID().toString(),
-                serverId = serverId,
-                toolName = toolName,
-                parameters = emptyMap() // TODO: Parse parameters in future JSON-RPC task
-            )
+            val (request, _) = jsonRpcSerializer.deserializeMessage(json)
+            if (request != null && request.method == McpMethods.TOOLS_CALL) {
+                val params = request.params ?: emptyMap()
+                val serverId = params["serverId"] as? String ?: "com.example.server"
+                val name = params["name"] as? String ?: "example_tool"
+                val arguments = params["arguments"] as? Map<String, Any> ?: emptyMap()
+                
+                ToolCallRequest(
+                    id = request.id,
+                    serverId = serverId,
+                    toolName = name,
+                    parameters = arguments
+                )
+            } else {
+                throw IllegalArgumentException("Invalid tool call request")
+            }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse tool call request", e)
+            Log.w(TAG, "Failed to parse tool call request: ${e.message}")
             ToolCallRequest(
                 id = UUID.randomUUID().toString(),
                 serverId = "com.example.server",
@@ -299,17 +309,23 @@ class MCPRequestHandler(
     }
     
     private fun parseResourceReadRequest(json: String): ResourceReadRequest {
-        // Basic JSON parsing for tests - TODO: Use JsonRpcSerializer in future tasks
         return try {
-            val serverId = extractJsonField(json, "serverId") ?: "com.example.server"
-            val uri = extractJsonField(json, "uri") ?: "example://resource"
-            ResourceReadRequest(
-                id = UUID.randomUUID().toString(),
-                serverId = serverId,
-                uri = uri
-            )
+            val (request, _) = jsonRpcSerializer.deserializeMessage(json)
+            if (request != null && request.method == McpMethods.RESOURCES_READ) {
+                val params = request.params ?: emptyMap()
+                val serverId = params["serverId"] as? String ?: "com.example.server"
+                val uri = params["uri"] as? String ?: "example://resource"
+                
+                ResourceReadRequest(
+                    id = request.id,
+                    serverId = serverId,
+                    uri = uri
+                )
+            } else {
+                throw IllegalArgumentException("Invalid resource read request")
+            }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse resource read request", e)
+            Log.w(TAG, "Failed to parse resource read request: ${e.message}")
             ResourceReadRequest(
                 id = UUID.randomUUID().toString(),
                 serverId = "com.example.server",
@@ -319,18 +335,25 @@ class MCPRequestHandler(
     }
     
     private fun parsePromptGetRequest(json: String): PromptGetRequest {
-        // Basic JSON parsing for tests - TODO: Use JsonRpcSerializer in future tasks
         return try {
-            val serverId = extractJsonField(json, "serverId") ?: "com.example.server"
-            val promptName = extractJsonField(json, "promptName") ?: "example_prompt"
-            PromptGetRequest(
-                id = UUID.randomUUID().toString(),
-                serverId = serverId,
-                promptName = promptName,
-                parameters = emptyMap() // TODO: Parse parameters in future JSON-RPC task
-            )
+            val (request, _) = jsonRpcSerializer.deserializeMessage(json)
+            if (request != null && request.method == McpMethods.PROMPTS_GET) {
+                val params = request.params ?: emptyMap()
+                val serverId = params["serverId"] as? String ?: "com.example.server"
+                val name = params["name"] as? String ?: "example_prompt"
+                val arguments = params["arguments"] as? Map<String, Any> ?: emptyMap()
+                
+                PromptGetRequest(
+                    id = request.id,
+                    serverId = serverId,
+                    promptName = name,
+                    parameters = arguments
+                )
+            } else {
+                throw IllegalArgumentException("Invalid prompt get request")
+            }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to parse prompt get request", e)
+            Log.w(TAG, "Failed to parse prompt get request: ${e.message}")
             PromptGetRequest(
                 id = UUID.randomUUID().toString(),
                 serverId = "com.example.server",
@@ -340,17 +363,6 @@ class MCPRequestHandler(
         }
     }
     
-    /**
-     * Basic JSON field extraction helper - TODO: Replace with JsonRpcSerializer in future tasks
-     */
-    private fun extractJsonField(json: String, fieldName: String): String? {
-        return try {
-            val pattern = "\"$fieldName\"\\s*:\\s*\"([^\"]+)\"".toRegex()
-            pattern.find(json)?.groupValues?.get(1)
-        } catch (e: Exception) {
-            null
-        }
-    }
     
     private fun parseToolsFromServer(json: String, serverId: String): List<ToolInfo> {
         // TODO: Implement proper JSON parsing
@@ -390,150 +402,164 @@ class MCPRequestHandler(
     }
     
     private fun createToolsListResponse(tools: List<ToolInfo>): String {
-        // TODO: Implement proper JSON-RPC response formatting
-        val toolsJson = tools.joinToString(",") { tool ->
-            """
-            {
-                "name": "${tool.name}",
-                "description": "${tool.description}",
-                "serverId": "${tool.serverId}",
-                "serverName": "${tool.serverName}"
-            }
-            """.trimIndent()
+        val toolsData = tools.map { tool ->
+            mapOf(
+                "name" to tool.name,
+                "description" to tool.description,
+                "serverId" to tool.serverId,
+                "serverName" to tool.serverName,
+                "inputSchema" to mapOf("type" to "object", "properties" to emptyMap<String, Any>())
+            )
         }
         
-        return """
-        {
-            "jsonrpc": "2.0",
-            "result": {
-                "tools": [$toolsJson]
-            },
-            "id": "${UUID.randomUUID()}"
-        }
-        """.trimIndent()
+        val response = jsonRpcSerializer.createSuccessResponse(
+            requestId = UUID.randomUUID().toString(),
+            result = mapOf("tools" to toolsData)
+        )
+        
+        return jsonRpcSerializer.serialize(response)
     }
     
     private fun createToolCallResponse(requestId: String, result: String): String {
-        return """
-        {
-            "jsonrpc": "2.0",
-            "result": $result,
-            "id": "$requestId"
+        // Parse the result string as JSON-like content for now
+        val resultData = try {
+            // For now, wrap the result string - in full implementation this would be proper JSON parsing
+            mapOf("content" to listOf(mapOf("type" to "text", "text" to result)))
+        } catch (e: Exception) {
+            mapOf("content" to listOf(mapOf("type" to "text", "text" to result)))
         }
-        """.trimIndent()
+        
+        val response = jsonRpcSerializer.createSuccessResponse(
+            requestId = requestId,
+            result = resultData
+        )
+        
+        return jsonRpcSerializer.serialize(response)
     }
     
     private fun createResourcesListResponse(resources: List<ResourceInfo>): String {
-        val resourcesJson = resources.joinToString(",") { resource ->
-            """
-            {
-                "uri": "${resource.uri}",
-                "name": "${resource.name}",
-                "description": "${resource.description}",
-                "serverId": "${resource.serverId}",
-                "serverName": "${resource.serverName}"
-            }
-            """.trimIndent()
+        val resourcesData = resources.map { resource ->
+            mapOf(
+                "uri" to resource.uri,
+                "name" to resource.name,
+                "description" to resource.description,
+                "serverId" to resource.serverId,
+                "serverName" to resource.serverName,
+                "mimeType" to "text/plain"
+            )
         }
         
-        return """
-        {
-            "jsonrpc": "2.0",
-            "result": {
-                "resources": [$resourcesJson]
-            },
-            "id": "${UUID.randomUUID()}"
-        }
-        """.trimIndent()
+        val response = jsonRpcSerializer.createSuccessResponse(
+            requestId = UUID.randomUUID().toString(),
+            result = mapOf("resources" to resourcesData)
+        )
+        
+        return jsonRpcSerializer.serialize(response)
     }
     
     private fun createResourceReadResponse(requestId: String, result: String): String {
-        return """
-        {
-            "jsonrpc": "2.0",
-            "result": $result,
-            "id": "$requestId"
-        }
-        """.trimIndent()
+        val resultData = mapOf(
+            "contents" to listOf(
+                mapOf(
+                    "uri" to "example://resource",
+                    "mimeType" to "text/plain",
+                    "text" to result
+                )
+            )
+        )
+        
+        val response = jsonRpcSerializer.createSuccessResponse(
+            requestId = requestId,
+            result = resultData
+        )
+        
+        return jsonRpcSerializer.serialize(response)
     }
     
     private fun createPromptsListResponse(prompts: List<PromptInfo>): String {
-        val promptsJson = prompts.joinToString(",") { prompt ->
-            """
-            {
-                "name": "${prompt.name}",
-                "description": "${prompt.description}",
-                "serverId": "${prompt.serverId}",
-                "serverName": "${prompt.serverName}"
-            }
-            """.trimIndent()
+        val promptsData = prompts.map { prompt ->
+            mapOf(
+                "name" to prompt.name,
+                "description" to prompt.description,
+                "serverId" to prompt.serverId,
+                "serverName" to prompt.serverName,
+                "arguments" to listOf<Map<String, Any>>()
+            )
         }
         
-        return """
-        {
-            "jsonrpc": "2.0",
-            "result": {
-                "prompts": [$promptsJson]
-            },
-            "id": "${UUID.randomUUID()}"
-        }
-        """.trimIndent()
+        val response = jsonRpcSerializer.createSuccessResponse(
+            requestId = UUID.randomUUID().toString(),
+            result = mapOf("prompts" to promptsData)
+        )
+        
+        return jsonRpcSerializer.serialize(response)
     }
     
     private fun createPromptGetResponse(requestId: String, result: String): String {
-        return """
-        {
-            "jsonrpc": "2.0",
-            "result": $result,
-            "id": "$requestId"
-        }
-        """.trimIndent()
+        val resultData = mapOf(
+            "description" to "Generated prompt response",
+            "messages" to listOf(
+                mapOf(
+                    "role" to "user",
+                    "content" to mapOf(
+                        "type" to "text",
+                        "text" to result
+                    )
+                )
+            )
+        )
+        
+        val response = jsonRpcSerializer.createSuccessResponse(
+            requestId = requestId,
+            result = resultData
+        )
+        
+        return jsonRpcSerializer.serialize(response)
     }
     
     private fun createServersListResponse(servers: List<ServerStatusInfo>): String {
-        val serversJson = servers.joinToString(",") { server ->
-            val capabilitiesJson = server.capabilities.joinToString(",") { "\"$it\"" }
-            """
-            {
-                "packageName": "${server.packageName}",
-                "appName": "${server.appName}",
-                "version": "${server.version}",
-                "capabilities": [$capabilitiesJson],
-                "connectionStatus": "${server.connectionStatus}",
-                "isConnected": ${server.isConnected},
-                "hasTools": ${server.hasTools},
-                "hasResources": ${server.hasResources},
-                "hasPrompts": ${server.hasPrompts}
-            }
-            """.trimIndent()
+        val serversData = servers.map { server ->
+            mapOf(
+                "packageName" to server.packageName,
+                "appName" to server.appName,
+                "version" to server.version,
+                "capabilities" to server.capabilities,
+                "connectionStatus" to server.connectionStatus,
+                "isConnected" to server.isConnected,
+                "hasTools" to server.hasTools,
+                "hasResources" to server.hasResources,
+                "hasPrompts" to server.hasPrompts
+            )
         }
         
-        return """
-        {
-            "jsonrpc": "2.0",
-            "result": {
-                "servers": [$serversJson]
-            },
-            "id": "${UUID.randomUUID()}"
-        }
-        """.trimIndent()
+        val response = jsonRpcSerializer.createSuccessResponse(
+            requestId = UUID.randomUUID().toString(),
+            result = mapOf("servers" to serversData)
+        )
+        
+        return jsonRpcSerializer.serialize(response)
     }
     
     private fun createErrorResponse(code: Int, message: String, id: String? = null): String {
-        return """
-        {
-            "jsonrpc": "2.0",
-            "error": {
-                "code": $code,
-                "message": "$message"
-            },
-            "id": ${if (id != null) "\"$id\"" else "null"}
-        }
-        """.trimIndent()
+        val response = jsonRpcSerializer.createErrorResponse(
+            requestId = id ?: "unknown",
+            code = code,
+            message = message
+        )
+        
+        return jsonRpcSerializer.serialize(response)
     }
     
     private fun mapToJson(map: Map<String, Any>): String {
-        // TODO: Implement proper JSON conversion using JsonRpcSerializer
-        return "{}"
+        // Simple JSON serialization for parameter passing
+        val entries = map.entries.joinToString(",") { (key, value) ->
+            when (value) {
+                is String -> "\"$key\":\"$value\""
+                is Number -> "\"$key\":$value"
+                is Boolean -> "\"$key\":$value"
+                else -> "\"$key\":\"$value\""
+            }
+        }
+        return "{$entries}"
     }
 }

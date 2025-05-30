@@ -51,6 +51,8 @@ object McpMethods {
     const val TOOLS_CALL = "tools/call"
     const val RESOURCES_LIST = "resources/list"
     const val RESOURCES_READ = "resources/read"
+    const val PROMPTS_LIST = "prompts/list"
+    const val PROMPTS_GET = "prompts/get"
     const val INITIALIZE = "initialize"
     const val PING = "ping"
     const val CAPABILITIES = "capabilities"

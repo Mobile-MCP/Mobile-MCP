@@ -36,7 +36,7 @@ class MCPRequestHandlerTest {
         
         val response = requestHandler.handleToolsListSync()
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"result\""))
         assertTrue(response.contains("\"tools\""))
         assertTrue(response.contains("\"id\""))
@@ -67,7 +67,7 @@ class MCPRequestHandlerTest {
         
         val response = requestHandler.handleToolsListSync()
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"result\""))
         assertTrue(response.contains("\"tools\""))
         assertTrue(response.contains("example_tool")) // From mock implementation
@@ -77,10 +77,10 @@ class MCPRequestHandlerTest {
     fun `handleToolCallSync returns error for unknown server`() {
         every { connectionManager.getConnection("unknown.server") } returns null
         
-        val requestBody = """{"serverId": "unknown.server", "toolName": "test_tool"}"""
+        val requestBody = """{"jsonrpc":"2.0","id":"test-1","method":"tools/call","params":{"serverId":"unknown.server","name":"test_tool"}}"""
         val response = requestHandler.handleToolCallSync(requestBody)
         
-        assertTrue("Response should be JSON-RPC 2.0", response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue("Response should be JSON-RPC 2.0", response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue("Response should contain error", response.contains("\"error\""))
         assertTrue("Should have error code -32602", response.contains("-32602")) // Invalid params
         assertTrue("Should mention not connected", response.contains("not connected"))
@@ -99,7 +99,7 @@ class MCPRequestHandlerTest {
         val requestBody = """{"serverId": "com.example.server", "toolName": "test_tool"}"""
         val response = requestHandler.handleToolCallSync(requestBody)
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"error\""))
         assertTrue(response.contains("-32601")) // Method not found
         assertTrue(response.contains("does not support tools"))
@@ -112,7 +112,7 @@ class MCPRequestHandlerTest {
         
         val response = requestHandler.handleResourcesListSync()
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"result\""))
         assertTrue(response.contains("\"resources\""))
         assertTrue(response.contains("\"id\""))
@@ -122,10 +122,10 @@ class MCPRequestHandlerTest {
     fun `handleResourceReadSync returns error for unknown server`() {
         every { connectionManager.getConnection("unknown.server") } returns null
         
-        val requestBody = """{"serverId": "unknown.server", "uri": "test://resource"}"""
+        val requestBody = """{"jsonrpc":"2.0","id":"test-1","method":"resources/read","params":{"serverId":"unknown.server","uri":"test://resource"}}"""
         val response = requestHandler.handleResourceReadSync(requestBody)
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"error\""))
         assertTrue(response.contains("-32602")) // Invalid params
         assertTrue(response.contains("not connected"))
@@ -144,7 +144,7 @@ class MCPRequestHandlerTest {
         val requestBody = """{"serverId": "com.example.server", "uri": "test://resource"}"""
         val response = requestHandler.handleResourceReadSync(requestBody)
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"error\""))
         assertTrue(response.contains("-32601")) // Method not found
         assertTrue(response.contains("does not support resources"))
@@ -157,7 +157,7 @@ class MCPRequestHandlerTest {
         
         val response = requestHandler.handlePromptsListSync()
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"result\""))
         assertTrue(response.contains("\"prompts\""))
         assertTrue(response.contains("\"id\""))
@@ -167,10 +167,10 @@ class MCPRequestHandlerTest {
     fun `handlePromptGetSync returns error for unknown server`() {
         every { connectionManager.getConnection("unknown.server") } returns null
         
-        val requestBody = """{"serverId": "unknown.server", "promptName": "test_prompt"}"""
+        val requestBody = """{"jsonrpc":"2.0","id":"test-1","method":"prompts/get","params":{"serverId":"unknown.server","name":"test_prompt"}}"""
         val response = requestHandler.handlePromptGetSync(requestBody)
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"error\""))
         assertTrue(response.contains("-32602")) // Invalid params
         assertTrue(response.contains("not connected"))
@@ -189,7 +189,7 @@ class MCPRequestHandlerTest {
         val requestBody = """{"serverId": "com.example.server", "promptName": "test_prompt"}"""
         val response = requestHandler.handlePromptGetSync(requestBody)
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"error\""))
         assertTrue(response.contains("-32601")) // Method not found
         assertTrue(response.contains("does not support prompts"))
@@ -228,7 +228,7 @@ class MCPRequestHandlerTest {
         
         val response = requestHandler.handleServersListSync()
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"result\""))
         assertTrue(response.contains("\"servers\""))
         assertTrue(response.contains("com.example.server1"))
@@ -243,7 +243,7 @@ class MCPRequestHandlerTest {
         
         val response = requestHandler.handleToolCallSync("{}")
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"error\""))
         assertTrue(response.contains("\"code\""))
         assertTrue(response.contains("\"message\""))
@@ -256,7 +256,7 @@ class MCPRequestHandlerTest {
         
         val response = requestHandler.handleToolsListSync()
         
-        assertTrue(response.contains("\"jsonrpc\": \"2.0\""))
+        assertTrue(response.contains("\"jsonrpc\":\"2.0\""))
         assertTrue(response.contains("\"result\""))
         assertTrue(response.contains("\"id\""))
         assertFalse(response.contains("\"error\""))
