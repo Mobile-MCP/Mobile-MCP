@@ -374,85 +374,38 @@ class MCPMethodRegistry(
     // ===================================================================================
     
     private fun formatToolResult(result: Any?): String {
-        return try {
-            val content = when (result) {
-                null -> listOf(mapOf("type" to "text", "text" to ""))
-                is String -> listOf(mapOf("type" to "text", "text" to result))
-                is Number -> listOf(mapOf("type" to "text", "text" to result.toString()))
-                is Boolean -> listOf(mapOf("type" to "text", "text" to result.toString()))
-                is List<*> -> listOf(mapOf("type" to "text", "text" to JSONArray(result).toString()))
-                is Map<*, *> -> listOf(mapOf("type" to "text", "text" to JSONObject(result).toString()))
-                else -> listOf(mapOf("type" to "text", "text" to result.toString()))
-            }
-            
-            JSONObject(mapOf(
-                "content" to content,
-                "isError" to false
-            )).toString()
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Error formatting tool result", e)
-            createErrorResponse("Failed to format tool result: ${e.message}")
+        // ARCHITECTURAL FIX: Server library should return raw objects, not JSON
+        // TODO: Remove this method entirely when client library handles result formatting
+        // This formatting belongs in the client library, not server library
+        return when (result) {
+            null -> ""
+            is String -> result
+            is Number -> result.toString()
+            is Boolean -> result.toString()
+            is List<*> -> result.joinToString(", ")
+            is Map<*, *> -> result.toString()
+            else -> result.toString()
         }
     }
     
     private fun formatResourceResult(result: Any?, uri: String): String {
-        return try {
-            val content: Map<String, Any> = when (result) {
-                is String -> mapOf(
-                    "uri" to uri,
-                    "mimeType" to "text/plain",
-                    "text" to result
-                )
-                is ByteArray -> mapOf(
-                    "uri" to uri,
-                    "mimeType" to "application/octet-stream", 
-                    "blob" to result.toString() // Base64 encoding would be better
-                )
-                else -> mapOf(
-                    "uri" to uri,
-                    "mimeType" to "text/plain",
-                    "text" to result?.toString() ?: ""
-                )
-            }
-            
-            JSONObject(mapOf(
-                "contents" to listOf(content)
-            )).toString()
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Error formatting resource result", e)
-            createErrorResponse("Failed to format resource result: ${e.message}")
+        // ARCHITECTURAL FIX: Server library should return raw objects, not JSON
+        // TODO: Remove this method entirely when client library handles resource formatting
+        // Resource formatting belongs in the client library
+        return when (result) {
+            is String -> result
+            is ByteArray -> result.toString() // TODO: Client library should handle proper encoding
+            else -> result?.toString() ?: ""
         }
     }
     
     private fun formatPromptResult(result: Any?, promptName: String): String {
-        return try {
-            val content: Map<String, Any> = when (result) {
-                is String -> mapOf(
-                    "role" to "user",
-                    "content" to mapOf(
-                        "type" to "text",
-                        "text" to result
-                    )
-                )
-                else -> mapOf(
-                    "role" to "user",
-                    "content" to mapOf(
-                        "type" to "text",
-                        "text" to result?.toString() ?: ""
-                    )
-                )
-            }
-            
-            JSONObject(mapOf(
-                "description" to "Generated prompt from $promptName",
-                "messages" to listOf(content)
-            )).toString()
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Error formatting prompt result", e)
-            createErrorResponse("Failed to format prompt result: ${e.message}")
+        // ARCHITECTURAL FIX: Server library should return raw objects, not JSON
+        // TODO: Remove this method entirely when client library handles prompt formatting
+        // Prompt formatting belongs in the client library
+        return when (result) {
+            is String -> result
+            else -> result?.toString() ?: ""
         }
     }
     

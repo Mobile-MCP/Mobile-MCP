@@ -114,73 +114,46 @@ abstract class MCPServiceBase : Service() {
         
         override fun getCapabilities(): String {
             return try {
-                val info = serverInfo ?: return createErrorResponse("Service not initialized")
+                val info = serverInfo ?: return "Service not initialized"
                 
-                val capabilities: Map<String, Any> = mapOf(
-                    "protocolVersion" to McpConstants.MCP_PROTOCOL_VERSION,
-                    "serverInfo" to mapOf(
-                        "name" to info.name,
-                        "version" to info.version,
-                        "description" to info.description
-                    ),
-                    "capabilities" to buildCapabilitiesObject()
-                )
-                
-                JSONObject(capabilities).toString()
+                // ARCHITECTURAL FIX: Return simple capability list, not full JSON-RPC response
+                // Full MCP protocol formatting belongs in client library
+                info.capabilities.joinToString(",")
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting capabilities", e)
-                createErrorResponse("Failed to get capabilities: ${e.message}")
+                "Error: ${e.message}"
             }
         }
         
         override fun initialize(clientInfo: String?, callback: IMcpServiceCallback?): String {
             return try {
-                val info = serverInfo ?: return createErrorResponse("Service not initialized")
+                val info = serverInfo ?: return "Service not initialized"
                 
-                // Parse client info if provided
-                val clientData = if (clientInfo != null) {
-                    try { JSONObject(clientInfo) } catch (e: Exception) { null }
-                } else null
+                Log.i(TAG, "Client initializing: ${clientInfo ?: "Unknown"}")
                 
-                Log.i(TAG, "Client initializing: ${clientData?.optString("name", "Unknown")}")
-                
-                // Return initialization response
-                val response: Map<String, Any> = mapOf(
-                    "protocolVersion" to McpConstants.MCP_PROTOCOL_VERSION,
-                    "capabilities" to buildCapabilitiesObject(),
-                    "serverInfo" to mapOf(
-                        "name" to info.name,
-                        "version" to info.version,
-                        "description" to info.description
-                    )
-                )
-                
-                JSONObject(response).toString()
+                // ARCHITECTURAL FIX: Return simple server info, not full JSON-RPC response
+                // Full MCP protocol formatting belongs in client library
+                "${info.name}|${info.version}|${info.description}"
             } catch (e: Exception) {
                 Log.e(TAG, "Error during initialization", e)
-                createErrorResponse("Initialization failed: ${e.message}")
+                "Error: ${e.message}"
             }
         }
         
         override fun ping(): String {
-            return """{"status": "pong", "timestamp": ${System.currentTimeMillis()}}"""
+            // ARCHITECTURAL FIX: Return simple pong, not JSON
+            return "pong"
         }
         
         override fun getServerInfo(): String {
             return try {
-                val server = serverInfo ?: return createErrorResponse("Service not initialized")
+                val server = serverInfo ?: return "Service not initialized"
                 
-                val info: Map<String, Any> = mapOf(
-                    "id" to server.id,
-                    "name" to server.name,
-                    "description" to server.description,
-                    "version" to server.version,
-                    "capabilities" to server.capabilities
-                )
-                JSONObject(info).toString()
+                // ARCHITECTURAL FIX: Return simple info, not JSON
+                "${server.id}|${server.name}|${server.description}|${server.version}"
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting server info", e)
-                createErrorResponse("Failed to get server info: ${e.message}")
+                "Error: ${e.message}"
             }
         }
         
