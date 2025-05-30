@@ -48,13 +48,8 @@ class MCPServiceFrameworkTest {
         val result = registry.executeTool("add", parametersJson, null, kotlinx.coroutines.GlobalScope)
         
         assertNotNull("Result should not be null", result)
-        assertTrue("Result should contain content", result.contains("content"))
-        
-        // Parse the result and verify the calculation
-        val resultObj = JSONObject(result)
-        val content = resultObj.getJSONArray("content")
-        val textContent = content.getJSONObject(0).getString("text")
-        assertEquals("Addition result should be correct", "8.0", textContent)
+        // ARCHITECTURAL FIX: Server now returns simple strings, not JSON
+        assertEquals("Addition result should be correct", "8.0", result)
     }
     
     @Test
@@ -67,14 +62,8 @@ class MCPServiceFrameworkTest {
         val result = registry.readResource("test://example", null, kotlinx.coroutines.GlobalScope)
         
         assertNotNull("Result should not be null", result)
-        assertTrue("Result should contain contents", result.contains("contents"))
-        
-        // Parse the result
-        val resultObj = JSONObject(result)
-        val contents = resultObj.getJSONArray("contents")
-        val content = contents.getJSONObject(0)
-        assertEquals("URI should match", "test://example", content.getString("uri"))
-        assertTrue("Should contain test data", content.getString("text").contains("Test resource"))
+        // ARCHITECTURAL FIX: Server now returns simple strings, not JSON
+        assertTrue("Should contain test data", result.contains("Test resource data for test://example"))
     }
     
     @Test
@@ -88,14 +77,8 @@ class MCPServiceFrameworkTest {
         val result = registry.getPrompt("test_prompt", parametersJson, null, kotlinx.coroutines.GlobalScope)
         
         assertNotNull("Result should not be null", result)
-        assertTrue("Result should contain messages", result.contains("messages"))
-        
-        // Parse the result
-        val resultObj = JSONObject(result)
-        val messages = resultObj.getJSONArray("messages")
-        val message = messages.getJSONObject(0)
-        val content = message.getJSONObject("content")
-        assertTrue("Should contain math topic", content.getString("text").contains("math"))
+        // ARCHITECTURAL FIX: Server now returns simple strings, not JSON
+        assertTrue("Should contain math topic", result.contains("math"))
     }
     
     @Test
@@ -108,7 +91,8 @@ class MCPServiceFrameworkTest {
         val invalidParametersJson = """{"a": 5}""" // Missing required parameter 'b'
         val result = registry.executeTool("add", invalidParametersJson, null, kotlinx.coroutines.GlobalScope)
         
-        assertTrue("Should return error for missing parameter", result.contains("error"))
+        // ARCHITECTURAL FIX: Server now returns simple error strings, not JSON
+        assertTrue("Should return error for missing parameter", result.startsWith("Error:"))
         assertTrue("Should mention parameter validation", result.contains("Parameter validation failed"))
     }
     

@@ -9,6 +9,7 @@ import android.util.Log
 import io.rosenpin.mmcp.mmcpcore.protocol.JsonRpcSerializer
 import io.rosenpin.mmcp.mmcpcore.protocol.McpProtocolCore
 import io.rosenpin.mmcp.server.annotations.*
+import io.rosenpin.mmcp.server.annotations.ServerInfo
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.lang.reflect.InvocationTargetException
@@ -44,7 +45,7 @@ abstract class MCPServiceBase : Service() {
     }
     
     // Service discovery and method registry
-    private var serverInfo: MCPServerInfo? = null
+    private var serverInfo: io.rosenpin.mmcp.server.annotations.ServerInfo? = null
     private var methodRegistry: MCPMethodRegistry? = null
     private val annotationProcessor = MCPAnnotationProcessor()
     
@@ -115,10 +116,11 @@ abstract class MCPServiceBase : Service() {
         override fun getCapabilities(): String {
             return try {
                 val info = serverInfo ?: return "Service not initialized"
+                val typedInfo = info as io.rosenpin.mmcp.server.annotations.ServerInfo
                 
                 // ARCHITECTURAL FIX: Return simple capability list, not full JSON-RPC response
                 // Full MCP protocol formatting belongs in client library
-                info.capabilities.joinToString(",")
+                typedInfo.capabilities.joinToString(",")
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting capabilities", e)
                 "Error: ${e.message}"
@@ -128,12 +130,13 @@ abstract class MCPServiceBase : Service() {
         override fun initialize(clientInfo: String?, callback: IMcpServiceCallback?): String {
             return try {
                 val info = serverInfo ?: return "Service not initialized"
+                val typedInfo = info as io.rosenpin.mmcp.server.annotations.ServerInfo
                 
                 Log.i(TAG, "Client initializing: ${clientInfo ?: "Unknown"}")
                 
                 // ARCHITECTURAL FIX: Return simple server info, not full JSON-RPC response
                 // Full MCP protocol formatting belongs in client library
-                "${info.name}|${info.version}|${info.description}"
+                "${typedInfo.name}|${typedInfo.version}|${typedInfo.description}"
             } catch (e: Exception) {
                 Log.e(TAG, "Error during initialization", e)
                 "Error: ${e.message}"
@@ -148,9 +151,10 @@ abstract class MCPServiceBase : Service() {
         override fun getServerInfo(): String {
             return try {
                 val server = serverInfo ?: return "Service not initialized"
+                val typedServer = server as io.rosenpin.mmcp.server.annotations.ServerInfo
                 
                 // ARCHITECTURAL FIX: Return simple info, not JSON
-                "${server.id}|${server.name}|${server.description}|${server.version}"
+                "${typedServer.id}|${typedServer.name}|${typedServer.description}|${typedServer.version}"
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting server info", e)
                 "Error: ${e.message}"
@@ -158,7 +162,7 @@ abstract class MCPServiceBase : Service() {
         }
         
         override fun supportsCapability(capability: String?): Boolean {
-            return capability != null && serverInfo?.capabilities?.contains(capability) == true
+            return capability != null && (serverInfo as? io.rosenpin.mmcp.server.annotations.ServerInfo)?.capabilities?.contains(capability) == true
         }
         
         override fun registerCallback(callback: IMcpServiceCallback?) {
@@ -192,45 +196,25 @@ abstract class MCPServiceBase : Service() {
         
         override fun listTools(): String {
             return try {
-                val info = serverInfo ?: return createErrorResponse("Service not initialized")
+                val info = serverInfo ?: return "Service not initialized"
                 
-                val tools = info.tools.map { tool ->
-                    mapOf(
-                        "name" to tool.name,
-                        "description" to tool.description,
-                        "inputSchema" to if (tool.parametersSchema.isNotBlank()) {
-                            JSONObject(tool.parametersSchema).toMap()
-                        } else {
-                            mapOf("type" to "object", "properties" to emptyMap<String, Any>())
-                        }
-                    )
-                }
-                
-                JSONObject(mapOf("tools" to tools)).toString()
+                // ARCHITECTURAL FIX: Return simple tool list, not JSON
+                info.tools.joinToString(";") { "${it.name}:${it.description}" }
             } catch (e: Exception) {
                 Log.e(TAG, "Error listing tools", e)
-                createErrorResponse("Failed to list tools: ${e.message}")
+                "Error: ${e.message}"
             }
         }
         
         override fun getToolInfo(toolName: String?): String? {
             return try {
                 if (toolName == null) return null
-                val server = serverInfo ?: return null
+                val info = serverInfo ?: return null
                 
-                val tool = annotationProcessor.findTool(server, toolName) ?: return null
+                val tool = annotationProcessor.findTool(info, toolName) ?: return null
                 
-                val info = mapOf(
-                    "name" to tool.name,
-                    "description" to tool.description,
-                    "inputSchema" to if (tool.parametersSchema.isNotBlank()) {
-                        JSONObject(tool.parametersSchema).toMap()
-                    } else {
-                        mapOf("type" to "object", "properties" to emptyMap<String, Any>())
-                    }
-                )
-                
-                JSONObject(info).toString()
+                // ARCHITECTURAL FIX: Return simple tool info, not JSON
+                "${tool.name}:${tool.description}:${tool.parametersSchema}"
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting tool info", e)
                 null
@@ -240,20 +224,20 @@ abstract class MCPServiceBase : Service() {
         override fun executeTool(toolName: String?, parameters: String?, callback: IMcpServiceCallback?): String {
             return try {
                 if (toolName == null) {
-                    return createErrorResponse("Tool name cannot be null")
+                    return "Error: Tool name cannot be null"
                 }
-                val registry = methodRegistry ?: return createErrorResponse("Service not initialized")
+                val registry = methodRegistry ?: return "Error: Service not initialized"
                 
                 registry.executeTool(toolName, parameters, callback, serviceScope)
             } catch (e: Exception) {
                 Log.e(TAG, "Error executing tool", e)
-                createErrorResponse("Tool execution failed: ${e.message}")
+                "Error: Tool execution failed: ${e.message}"
             }
         }
         
         override fun isToolAvailable(toolName: String?): Boolean {
-            val server = serverInfo ?: return false
-            return toolName != null && annotationProcessor.findTool(server, toolName) != null
+            val info = serverInfo ?: return false
+            return toolName != null && annotationProcessor.findTool(info, toolName) != null
         }
         
         override fun cancelExecution(executionId: String?): Boolean {
@@ -275,40 +259,27 @@ abstract class MCPServiceBase : Service() {
         
         override fun listResources(): String {
             return try {
-                val info = serverInfo ?: return createErrorResponse("Service not initialized")
+                val info = serverInfo ?: return "Service not initialized"
                 
-                val resources = info.resources.map { resource ->
-                    mapOf(
-                        "uri" to "${resource.scheme}://example",
-                        "name" to resource.name,
-                        "description" to resource.description,
-                        "mimeType" to resource.mimeType
-                    )
-                }
-                
-                JSONObject(mapOf("resources" to resources)).toString()
+                // ARCHITECTURAL FIX: Return simple resource list, not JSON
+                info.resources.joinToString(";") { "${it.scheme}:${it.name}:${it.description}" }
             } catch (e: Exception) {
                 Log.e(TAG, "Error listing resources", e)
-                createErrorResponse("Failed to list resources: ${e.message}")
+                "Error: ${e.message}"
             }
         }
         
         override fun getResourceInfo(resourceUri: String?): String? {
             return try {
                 if (resourceUri == null) return null
+                val info = serverInfo ?: return null
                 
                 val scheme = resourceUri.substringBefore("://")
-                val resource = annotationProcessor.findResourcesForScheme(serverInfo, scheme).firstOrNull()
+                val resource = annotationProcessor.findResourcesForScheme(info, scheme).firstOrNull()
                     ?: return null
                 
-                val info = mapOf(
-                    "uri" to resourceUri,
-                    "name" to resource.name, 
-                    "description" to resource.description,
-                    "mimeType" to resource.mimeType
-                )
-                
-                JSONObject(info).toString()
+                // ARCHITECTURAL FIX: Return simple resource info, not JSON
+                "${resourceUri}:${resource.name}:${resource.description}:${resource.mimeType}"
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting resource info", e)
                 null
@@ -318,20 +289,21 @@ abstract class MCPServiceBase : Service() {
         override fun readResource(resourceUri: String?, callback: IMcpServiceCallback?): String {
             return try {
                 if (resourceUri == null) {
-                    return createErrorResponse("Resource URI cannot be null")
+                    return "Error: Resource URI cannot be null"
                 }
                 
-                methodRegistry.readResource(resourceUri, callback, serviceScope)
+                methodRegistry?.readResource(resourceUri, callback, serviceScope) ?: "Error: Service not initialized"
             } catch (e: Exception) {
                 Log.e(TAG, "Error reading resource", e)
-                createErrorResponse("Resource read failed: ${e.message}")
+                "Error: Resource read failed: ${e.message}"
             }
         }
         
         override fun isResourceAvailable(resourceUri: String?): Boolean {
             if (resourceUri == null) return false
+            val info = serverInfo ?: return false
             val scheme = resourceUri.substringBefore("://")
-            return annotationProcessor.findResourcesForScheme(serverInfo, scheme).isNotEmpty()
+            return annotationProcessor.findResourcesForScheme(info, scheme).isNotEmpty()
         }
         
         override fun subscribeToResource(resourceUri: String?, callback: IMcpServiceCallback?): Boolean {
@@ -358,61 +330,25 @@ abstract class MCPServiceBase : Service() {
         
         override fun listPrompts(): String {
             return try {
-                val prompts = serverInfo.prompts.map { prompt ->
-                    mapOf(
-                        "name" to prompt.name,
-                        "description" to prompt.description,
-                        "arguments" to if (prompt.parametersSchema.isNotBlank()) {
-                            val schema = JSONObject(prompt.parametersSchema)
-                            // Convert JSON schema to MCP prompt arguments format
-                            val properties = schema.optJSONObject("properties") ?: JSONObject()
-                            properties.keys().asSequence().map { key ->
-                                val prop = properties.getJSONObject(key)
-                                mapOf(
-                                    "name" to key,
-                                    "description" to prop.optString("description", ""),
-                                    "required" to schema.optJSONArray("required")?.toString()?.contains(key) ?: false
-                                )
-                            }.toList()
-                        } else {
-                            emptyList<Map<String, Any>>()
-                        }
-                    )
-                }
+                val info = serverInfo ?: return "Service not initialized"
                 
-                JSONObject(mapOf("prompts" to prompts)).toString()
+                // ARCHITECTURAL FIX: Return simple prompt list, not JSON
+                info.prompts.joinToString(";") { "${it.name}:${it.description}" }
             } catch (e: Exception) {
                 Log.e(TAG, "Error listing prompts", e)
-                createErrorResponse("Failed to list prompts: ${e.message}")
+                "Error: ${e.message}"
             }
         }
         
         override fun getPromptInfo(promptName: String?): String? {
             return try {
                 if (promptName == null) return null
+                val info = serverInfo ?: return null
                 
-                val prompt = annotationProcessor.findPrompt(serverInfo, promptName) ?: return null
+                val prompt = annotationProcessor.findPrompt(info, promptName) ?: return null
                 
-                val info = mapOf(
-                    "name" to prompt.name,
-                    "description" to prompt.description,
-                    "arguments" to if (prompt.parametersSchema.isNotBlank()) {
-                        val schema = JSONObject(prompt.parametersSchema)
-                        val properties = schema.optJSONObject("properties") ?: JSONObject()
-                        properties.keys().asSequence().map { key ->
-                            val prop = properties.getJSONObject(key)
-                            mapOf(
-                                "name" to key,
-                                "description" to prop.optString("description", ""),
-                                "required" to schema.optJSONArray("required")?.toString()?.contains(key) ?: false
-                            )
-                        }.toList()
-                    } else {
-                        emptyList<Map<String, Any>>()
-                    }
-                )
-                
-                JSONObject(info).toString()
+                // ARCHITECTURAL FIX: Return simple prompt info, not JSON
+                "${prompt.name}:${prompt.description}:${prompt.parametersSchema}"
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting prompt info", e)
                 null
@@ -422,18 +358,19 @@ abstract class MCPServiceBase : Service() {
         override fun getPrompt(promptName: String?, parameters: String?, callback: IMcpServiceCallback?): String {
             return try {
                 if (promptName == null) {
-                    return createErrorResponse("Prompt name cannot be null")
+                    return "Error: Prompt name cannot be null"
                 }
                 
-                methodRegistry.getPrompt(promptName, parameters, callback, serviceScope)
+                methodRegistry?.getPrompt(promptName, parameters, callback, serviceScope) ?: "Error: Service not initialized"
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting prompt", e)
-                createErrorResponse("Prompt generation failed: ${e.message}")
+                "Error: Prompt generation failed: ${e.message}"
             }
         }
         
         override fun isPromptAvailable(promptName: String?): Boolean {
-            return promptName != null && annotationProcessor.findPrompt(serverInfo, promptName) != null
+            val info = serverInfo ?: return false
+            return promptName != null && annotationProcessor.findPrompt(info, promptName) != null
         }
         
         override fun searchPrompts(query: String?): String {
@@ -448,19 +385,20 @@ abstract class MCPServiceBase : Service() {
     
     private fun buildCapabilitiesObject(): Map<String, Any> {
         val caps = mutableMapOf<String, Any>()
+        val info = serverInfo ?: return caps
         
-        if (serverInfo.capabilities.contains(McpConstants.Capabilities.TOOLS)) {
+        if (info.capabilities.contains(McpConstants.Capabilities.TOOLS)) {
             caps["tools"] = mapOf("listChanged" to true)
         }
         
-        if (serverInfo.capabilities.contains(McpConstants.Capabilities.RESOURCES)) {
+        if (info.capabilities.contains(McpConstants.Capabilities.RESOURCES)) {
             caps["resources"] = mapOf(
                 "subscribe" to true,
                 "listChanged" to true
             )
         }
         
-        if (serverInfo.capabilities.contains(McpConstants.Capabilities.PROMPTS)) {
+        if (info.capabilities.contains(McpConstants.Capabilities.PROMPTS)) {
             caps["prompts"] = mapOf("listChanged" to true)
         }
         
@@ -468,13 +406,8 @@ abstract class MCPServiceBase : Service() {
     }
     
     private fun createErrorResponse(message: String): String {
-        return JSONObject(mapOf(
-            "error" to mapOf(
-                "code" to -32603,
-                "message" to message,
-                "timestamp" to System.currentTimeMillis()
-            )
-        )).toString()
+        // ARCHITECTURAL FIX: Return simple error, not JSON
+        return "Error: $message"
     }
     
     /**

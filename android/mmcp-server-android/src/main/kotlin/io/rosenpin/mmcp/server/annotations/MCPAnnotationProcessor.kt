@@ -21,9 +21,9 @@ class MCPAnnotationProcessor {
      * Process a server class and extract all MCP metadata.
      * 
      * @param serverClass The class to process for MCP annotations
-     * @return MCPServerInfo containing all discovered capabilities, or null if no @MCPServer annotation
+     * @return ServerInfo containing all discovered capabilities, or null if no @MCPServer annotation
      */
-    fun processServerClass(serverClass: Class<*>): MCPServerInfo? {
+    fun processServerClass(serverClass: Class<*>): ServerInfo? {
         val serverAnnotation = serverClass.getAnnotation(MCPServer::class.java)
             ?: return null
         
@@ -33,7 +33,7 @@ class MCPAnnotationProcessor {
         
         val capabilities = buildCapabilitiesList(tools, resources, prompts)
         
-        return MCPServerInfo(
+        return ServerInfo(
             id = serverAnnotation.id,
             name = serverAnnotation.name,
             description = serverAnnotation.description,
@@ -245,42 +245,42 @@ class MCPAnnotationProcessor {
     /**
      * Get all tool names from a processed server.
      */
-    fun getToolNames(serverInfo: MCPServerInfo): List<String> {
+    fun getToolNames(serverInfo: ServerInfo): List<String> {
         return serverInfo.tools.map { it.name }
     }
     
     /**
      * Get all resource schemes from a processed server.
      */
-    fun getResourceSchemes(serverInfo: MCPServerInfo): List<String> {
+    fun getResourceSchemes(serverInfo: ServerInfo): List<String> {
         return serverInfo.resources.map { it.scheme }.distinct()
     }
     
     /**
      * Get all prompt names from a processed server.
      */
-    fun getPromptNames(serverInfo: MCPServerInfo): List<String> {
+    fun getPromptNames(serverInfo: ServerInfo): List<String> {
         return serverInfo.prompts.map { it.name }
     }
     
     /**
      * Find a specific tool by name.
      */
-    fun findTool(serverInfo: MCPServerInfo, toolName: String): ToolMethodInfo? {
+    fun findTool(serverInfo: ServerInfo, toolName: String): ToolMethodInfo? {
         return serverInfo.tools.find { it.name == toolName }
     }
     
     /**
      * Find resource handlers for a specific scheme.
      */
-    fun findResourcesForScheme(serverInfo: MCPServerInfo, scheme: String): List<ResourceMethodInfo> {
+    fun findResourcesForScheme(serverInfo: ServerInfo, scheme: String): List<ResourceMethodInfo> {
         return serverInfo.resources.filter { it.scheme == scheme }
     }
     
     /**
      * Find a specific prompt by name.
      */
-    fun findPrompt(serverInfo: MCPServerInfo, promptName: String): PromptMethodInfo? {
+    fun findPrompt(serverInfo: ServerInfo, promptName: String): PromptMethodInfo? {
         return serverInfo.prompts.find { it.name == promptName }
     }
     

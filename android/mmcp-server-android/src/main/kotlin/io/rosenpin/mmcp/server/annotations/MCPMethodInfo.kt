@@ -51,11 +51,37 @@ data class ToolMethodInfo(
         
         arguments?.forEach { (paramName, value) ->
             parameterMapping[paramName]?.let { index ->
-                args[index] = value
+                // Convert parameter type to match method signature
+                val paramType = method.parameterTypes[index]
+                args[index] = convertParameterType(value, paramType)
             }
         }
         
         return method.invoke(instance, *args)
+    }
+    
+    private fun convertParameterType(value: Any?, targetType: Class<*>): Any? {
+        if (value == null) return null
+        
+        return when {
+            targetType == value::class.java -> value
+            targetType == Double::class.java || targetType == Double::class.javaPrimitiveType -> {
+                when (value) {
+                    is Number -> value.toDouble()
+                    is String -> value.toDoubleOrNull()
+                    else -> value
+                }
+            }
+            targetType == Int::class.java || targetType == Int::class.javaPrimitiveType -> {
+                when (value) {
+                    is Number -> value.toInt()
+                    is String -> value.toIntOrNull()
+                    else -> value
+                }
+            }
+            targetType == String::class.java -> value.toString()
+            else -> value
+        }
     }
 }
 
@@ -138,11 +164,37 @@ data class PromptMethodInfo(
         
         arguments?.forEach { (paramName, value) ->
             parameterMapping[paramName]?.let { index ->
-                args[index] = value
+                // Convert parameter type to match method signature
+                val paramType = method.parameterTypes[index]
+                args[index] = convertParameterType(value, paramType)
             }
         }
         
         return method.invoke(instance, *args)
+    }
+    
+    private fun convertParameterType(value: Any?, targetType: Class<*>): Any? {
+        if (value == null) return null
+        
+        return when {
+            targetType == value::class.java -> value
+            targetType == Double::class.java || targetType == Double::class.javaPrimitiveType -> {
+                when (value) {
+                    is Number -> value.toDouble()
+                    is String -> value.toDoubleOrNull()
+                    else -> value
+                }
+            }
+            targetType == Int::class.java || targetType == Int::class.javaPrimitiveType -> {
+                when (value) {
+                    is Number -> value.toInt()
+                    is String -> value.toIntOrNull()
+                    else -> value
+                }
+            }
+            targetType == String::class.java -> value.toString()
+            else -> value
+        }
     }
 }
 
@@ -150,7 +202,7 @@ data class PromptMethodInfo(
  * Complete information about an MCP server discovered via annotation processing.
  * Contains the server metadata and all discovered capabilities.
  */
-data class MCPServerInfo(
+data class ServerInfo(
     /**
      * Unique server identifier.
      */
