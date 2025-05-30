@@ -44,16 +44,50 @@ data class JsonRpcError(
 }
 
 /**
- * Standard MCP method names
+ * Standard MCP method names following the MCP JSON-RPC 2.0 specification
+ * Based on official MCP schema: https://github.com/modelcontextprotocol/modelcontextprotocol
  */
 object McpMethods {
+    // Core protocol methods
+    const val PING = "ping"
+    const val INITIALIZE = "initialize"
+    
+    // Tool management methods
     const val TOOLS_LIST = "tools/list"
     const val TOOLS_CALL = "tools/call"
+    
+    // Resource management methods
     const val RESOURCES_LIST = "resources/list"
+    const val RESOURCES_TEMPLATES_LIST = "resources/templates/list"
     const val RESOURCES_READ = "resources/read"
+    const val RESOURCES_SUBSCRIBE = "resources/subscribe"
+    const val RESOURCES_UNSUBSCRIBE = "resources/unsubscribe"
+    
+    // Prompt management methods
     const val PROMPTS_LIST = "prompts/list"
     const val PROMPTS_GET = "prompts/get"
-    const val INITIALIZE = "initialize"
-    const val PING = "ping"
-    const val CAPABILITIES = "capabilities"
+    
+    // Completion methods
+    const val COMPLETION_COMPLETE = "completion/complete"
+    
+    // Root listing methods
+    const val ROOTS_LIST = "roots/list"
+    
+    // Logging methods
+    const val LOGGING_SET_LEVEL = "logging/setLevel"
+    
+    // Client-initiated notification methods
+    const val NOTIFICATIONS_INITIALIZED = "notifications/initialized"
+    const val NOTIFICATIONS_CANCELLED = "notifications/cancelled"
+    const val NOTIFICATIONS_PROGRESS = "notifications/progress"
+    
+    // Server-initiated notification methods
+    const val NOTIFICATIONS_TOOLS_LIST_CHANGED = "notifications/tools/list_changed"
+    const val NOTIFICATIONS_RESOURCES_LIST_CHANGED = "notifications/resources/list_changed"
+    const val NOTIFICATIONS_RESOURCES_UPDATED = "notifications/resources/updated"
+    const val NOTIFICATIONS_PROMPTS_LIST_CHANGED = "notifications/prompts/list_changed"
+    const val NOTIFICATIONS_LOG_MESSAGE = "notifications/message"
+    
+    // Sampling methods (server-to-client)
+    const val SAMPLING_CREATE_MESSAGE = "sampling/createMessage"
 }
