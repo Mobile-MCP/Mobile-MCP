@@ -30,8 +30,8 @@ import java.io.IOException
  */
 class MCPHttpServer(
     private val port: Int = 11434,
-    private val discovery: McpServerDiscovery,
-    private val connectionManager: McpConnectionManager
+    discovery: McpServerDiscovery,
+    connectionManager: McpConnectionManager
 ) : NanoHTTPD(port) {
     
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -305,7 +305,7 @@ class MCPHttpServer(
      */
     fun startServer(): Result<Unit> {
         return try {
-            start(NanoHTTPD.SOCKET_READ_TIMEOUT, false)
+            start(SOCKET_READ_TIMEOUT, false)
             Log.i(TAG, "MCP HTTP Server started on port $port")
             Result.success(Unit)
         } catch (e: IOException) {

@@ -4,14 +4,12 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.os.RemoteCallbackList
-import android.os.RemoteException
 import android.util.Log
 import io.rosenpin.mmcp.mmcpcore.protocol.JsonRpcSerializer
 import io.rosenpin.mmcp.mmcpcore.protocol.McpProtocolCore
 import io.rosenpin.mmcp.server.annotations.*
 import io.rosenpin.mmcp.server.annotations.ServerInfo
 import kotlinx.coroutines.*
-import java.lang.reflect.InvocationTargetException
 
 /**
  * Base service class for MCP servers on Android.
@@ -44,7 +42,7 @@ abstract class MCPServiceBase : Service() {
     }
     
     // Service discovery and method registry
-    private var serverInfo: ServerInfo? = null
+    private var cachedServerInfo: ServerInfo? = null
     private var methodRegistry: MCPMethodRegistry? = null
     private val annotationProcessor = MCPAnnotationProcessor()
     
@@ -73,7 +71,7 @@ abstract class MCPServiceBase : Service() {
             }
             
             // Assign to instance variables
-            serverInfo = discoveredServerInfo
+            cachedServerInfo = discoveredServerInfo
             methodRegistry = MCPMethodRegistry(discoveredServerInfo, this)
             
             Log.i(TAG, "MCP Service initialized: ${discoveredServerInfo.name} (${discoveredServerInfo.id})")
@@ -90,7 +88,7 @@ abstract class MCPServiceBase : Service() {
         super.onDestroy()
         serviceScope.cancel()
         callbacks.kill()
-        Log.i(TAG, "MCP Service destroyed: ${serverInfo?.name ?: "Unknown"}")
+        Log.i(TAG, "MCP Service destroyed: ${cachedServerInfo?.name ?: "Unknown"}")
     }
     
     override fun onBind(intent: Intent?): IBinder? {
@@ -114,10 +112,9 @@ abstract class MCPServiceBase : Service() {
         
         override fun getCapabilities(): String {
             return try {
-                val info = serverInfo ?: return "Service not initialized"
-                val typedInfo = info as ServerInfo
-                
-                typedInfo.capabilities.joinToString(",")
+                val info = cachedServerInfo ?: return "Service not initialized"
+
+                info.capabilities.joinToString(",")
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting capabilities", e)
                 "Error: ${e.message}"
@@ -126,12 +123,11 @@ abstract class MCPServiceBase : Service() {
         
         override fun initialize(clientInfo: String?, callback: IMcpServiceCallback?): String {
             return try {
-                val info = serverInfo ?: return "Service not initialized"
-                val typedInfo = info as ServerInfo
-                
+                val info = cachedServerInfo ?: return "Service not initialized"
+
                 Log.i(TAG, "Client initializing: ${clientInfo ?: "Unknown"}")
-                
-                "${typedInfo.name}|${typedInfo.version}|${typedInfo.description}"
+
+                "${info.name}|${info.version}|${info.description}"
             } catch (e: Exception) {
                 Log.e(TAG, "Error during initialization", e)
                 "Error: ${e.message}"
@@ -145,10 +141,9 @@ abstract class MCPServiceBase : Service() {
         
         override fun getServerInfo(): String {
             return try {
-                val server = serverInfo ?: return "Service not initialized"
-                val typedServer = server as ServerInfo
-                
-                "${typedServer.id}|${typedServer.name}|${typedServer.description}|${typedServer.version}"
+                val server = cachedServerInfo ?: return "Service not initialized"
+
+                "${server.id}|${server.name}|${server.description}|${server.version}"
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting server info", e)
                 "Error: ${e.message}"
@@ -156,7 +151,7 @@ abstract class MCPServiceBase : Service() {
         }
         
         override fun supportsCapability(capability: String?): Boolean {
-            return capability != null && (serverInfo as? ServerInfo)?.capabilities?.contains(capability) == true
+            return capability != null && cachedServerInfo?.capabilities?.contains(capability) == true
         }
         
         override fun registerCallback(callback: IMcpServiceCallback?) {
@@ -190,7 +185,7 @@ abstract class MCPServiceBase : Service() {
         
         override fun listTools(): String {
             return try {
-                val info = serverInfo ?: return "Service not initialized"
+                val info = cachedServerInfo ?: return "Service not initialized"
                 
                 // ARCHITECTURAL FIX: Return simple tool list, not JSON
                 info.tools.joinToString(";") { "${it.name}:${it.description}" }
@@ -203,7 +198,7 @@ abstract class MCPServiceBase : Service() {
         override fun getToolInfo(toolName: String?): String? {
             return try {
                 if (toolName == null) return null
-                val info = serverInfo ?: return null
+                val info = cachedServerInfo ?: return null
                 
                 val tool = annotationProcessor.findTool(info, toolName) ?: return null
                 
@@ -230,7 +225,7 @@ abstract class MCPServiceBase : Service() {
         }
         
         override fun isToolAvailable(toolName: String?): Boolean {
-            val info = serverInfo ?: return false
+            val info = cachedServerInfo ?: return false
             return toolName != null && annotationProcessor.findTool(info, toolName) != null
         }
         
@@ -253,7 +248,7 @@ abstract class MCPServiceBase : Service() {
         
         override fun listResources(): String {
             return try {
-                val info = serverInfo ?: return "Service not initialized"
+                val info = cachedServerInfo ?: return "Service not initialized"
                 
                 // ARCHITECTURAL FIX: Return simple resource list, not JSON
                 info.resources.joinToString(";") { "${it.scheme}:${it.name}:${it.description}" }
@@ -266,7 +261,7 @@ abstract class MCPServiceBase : Service() {
         override fun getResourceInfo(resourceUri: String?): String? {
             return try {
                 if (resourceUri == null) return null
-                val info = serverInfo ?: return null
+                val info = cachedServerInfo ?: return null
                 
                 val scheme = resourceUri.substringBefore("://")
                 val resource = annotationProcessor.findResourcesForScheme(info, scheme).firstOrNull()
@@ -295,7 +290,7 @@ abstract class MCPServiceBase : Service() {
         
         override fun isResourceAvailable(resourceUri: String?): Boolean {
             if (resourceUri == null) return false
-            val info = serverInfo ?: return false
+            val info = cachedServerInfo ?: return false
             val scheme = resourceUri.substringBefore("://")
             return annotationProcessor.findResourcesForScheme(info, scheme).isNotEmpty()
         }
@@ -324,7 +319,7 @@ abstract class MCPServiceBase : Service() {
         
         override fun listPrompts(): String {
             return try {
-                val info = serverInfo ?: return "Service not initialized"
+                val info = cachedServerInfo ?: return "Service not initialized"
                 
                 // ARCHITECTURAL FIX: Return simple prompt list, not JSON
                 info.prompts.joinToString(";") { "${it.name}:${it.description}" }
@@ -337,7 +332,7 @@ abstract class MCPServiceBase : Service() {
         override fun getPromptInfo(promptName: String?): String? {
             return try {
                 if (promptName == null) return null
-                val info = serverInfo ?: return null
+                val info = cachedServerInfo ?: return null
                 
                 val prompt = annotationProcessor.findPrompt(info, promptName) ?: return null
                 
@@ -363,7 +358,7 @@ abstract class MCPServiceBase : Service() {
         }
         
         override fun isPromptAvailable(promptName: String?): Boolean {
-            val info = serverInfo ?: return false
+            val info = cachedServerInfo ?: return false
             return promptName != null && annotationProcessor.findPrompt(info, promptName) != null
         }
         
@@ -379,7 +374,7 @@ abstract class MCPServiceBase : Service() {
     
     private fun buildCapabilitiesObject(): Map<String, Any> {
         val caps = mutableMapOf<String, Any>()
-        val info = serverInfo ?: return caps
+        val info = cachedServerInfo ?: return caps
         
         if (info.capabilities.contains(McpConstants.Capabilities.TOOLS)) {
             caps["tools"] = mapOf("listChanged" to true)

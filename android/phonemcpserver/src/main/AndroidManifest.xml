@@ -32,11 +32,11 @@
             android:name=".PhoneMCPService"
             android:exported="true">
             <intent-filter>
-                <action android:name="io.rosenpin.mmcp.server.MCP_SERVICE" />
-                <action android:name="io.rosenpin.mmcp.server.MCP_TOOL_SERVICE" />
-                <action android:name="io.rosenpin.mmcp.server.MCP_RESOURCE_SERVICE" />
-                <action android:name="io.rosenpin.mmcp.server.MCP_PROMPT_SERVICE" />
-                <action android:name="io.rosenpin.mmcp.server.MCP_DISCOVERY_SERVICE" />
+                <action android:name="io.rosenpin.mmcp.action.MCP_SERVICE" />
+                <action android:name="io.rosenpin.mmcp.action.MCP_TOOL_SERVICE" />
+                <action android:name="io.rosenpin.mmcp.action.MCP_RESOURCE_SERVICE" />
+                <action android:name="io.rosenpin.mmcp.action.MCP_PROMPT_SERVICE" />
+                <action android:name="io.rosenpin.mmcp.action.MCP_DISCOVERY_SERVICE" />
             </intent-filter>
         </service>
     </application>
