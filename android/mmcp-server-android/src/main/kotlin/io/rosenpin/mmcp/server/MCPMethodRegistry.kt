@@ -46,7 +46,7 @@ class MCPMethodRegistry(
         scope: CoroutineScope
     ): String {
         val tool = serverInfo.tools.find { it.id == toolName }
-            ?: return createErrorResponse("Tool '$toolName' not found")
+            ?: return createErrorResponse("Tool '$toolName' not found. Available tools: ${serverInfo.tools.map { it.id }.joinToString(", ")}")
         
         return try {
             // Parse parameters
@@ -134,7 +134,7 @@ class MCPMethodRegistry(
             val scheme = uri.scheme ?: return createErrorResponse("Invalid URI: missing scheme")
             
             val resourceHandler = serverInfo.resources.find { it.scheme == scheme }
-                ?: return createErrorResponse("No resource handler for scheme '$scheme'")
+                ?: return createErrorResponse("No resource handler for scheme '$scheme'. Available schemes: ${serverInfo.resources.map { it.scheme }.joinToString(", ")}")
             
             // For resources, pass the full URI as a parameter
             val parameters = mapOf("uri" to resourceUri)
@@ -211,7 +211,7 @@ class MCPMethodRegistry(
         scope: CoroutineScope
     ): String {
         val prompt = serverInfo.prompts.find { it.id == promptName }
-            ?: return createErrorResponse("Prompt '$promptName' not found")
+            ?: return createErrorResponse("Prompt '$promptName' not found. Available prompts: ${serverInfo.prompts.map { it.id }.joinToString(", ")}")
         
         return try {
             // Parse parameters
@@ -341,7 +341,16 @@ class MCPMethodRegistry(
                 if (propSchema != null) {
                     val expectedType = propSchema["type"] as? String
                     if (expectedType != null && !isValidParameterType(value, expectedType)) {
-                        errors.add("Parameter '$paramName' has invalid type. Expected: $expectedType, got: ${value::class.simpleName}")
+                        val actualType = when (value) {
+                            is String -> "string"
+                            is Int, is Long -> "integer"
+                            is Float, is Double -> "number"
+                            is Boolean -> "boolean"
+                            is List<*> -> "array"
+                            is Map<*, *> -> "object"
+                            else -> value::class.simpleName
+                        }
+                        errors.add("Parameter '$paramName' has invalid type. Expected: $expectedType, got: $actualType (value: $value)")
                     }
                 }
             }

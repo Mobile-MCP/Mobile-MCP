@@ -187,8 +187,8 @@ abstract class MCPServiceBase : Service() {
             return try {
                 val info = cachedServerInfo ?: return "Service not initialized"
                 
-                // ARCHITECTURAL FIX: Return simple tool list, not JSON
-                info.tools.joinToString(";") { "${it.name}:${it.description}" }
+                // Return tool IDs (not names) so client can execute them
+                info.tools.joinToString(";") { "${it.id}:${it.description}" }
             } catch (e: Exception) {
                 Log.e(TAG, "Error listing tools", e)
                 "Error: ${e.message}"
@@ -321,8 +321,8 @@ abstract class MCPServiceBase : Service() {
             return try {
                 val info = cachedServerInfo ?: return "Service not initialized"
                 
-                // ARCHITECTURAL FIX: Return simple prompt list, not JSON
-                info.prompts.joinToString(";") { "${it.name}:${it.description}" }
+                // Return prompt IDs (not names) so client can execute them
+                info.prompts.joinToString(";") { "${it.id}:${it.description}" }
             } catch (e: Exception) {
                 Log.e(TAG, "Error listing prompts", e)
                 "Error: ${e.message}"

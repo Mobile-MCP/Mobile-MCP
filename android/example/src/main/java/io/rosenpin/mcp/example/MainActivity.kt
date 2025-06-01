@@ -20,8 +20,37 @@ import io.rosenpin.mcp.example.ui.theme.MMCPExampleTheme
 import io.rosenpin.mmcp.client.McpClient
 import kotlinx.coroutines.launch
 import android.util.Log
+import com.google.gson.Gson
+import androidx.compose.material3.TextField
+import androidx.compose.ui.window.Dialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.layout.Box
 
 private const val TAG = "MCPExampleApp"
+
+// Data class to store discovered capabilities for each server
+data class ServerCapabilities(
+    val tools: List<ToolInfo> = emptyList(),
+    val resources: List<String> = emptyList(),
+    val prompts: List<PromptInfo> = emptyList()
+)
+
+data class ToolInfo(
+    val id: String,
+    val name: String = "",
+    val description: String = "",
+    val parametersSchema: String = "{}"
+)
+
+data class PromptInfo(
+    val id: String,
+    val name: String = "",
+    val description: String = "",
+    val parametersSchema: String = "{}"
+)
 
 class MainActivity : ComponentActivity() {
     
@@ -64,12 +93,23 @@ fun MCPClientTestScreen(
     var testResults by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     
-    Column(
+    // Store discovered capabilities for each server
+    var serverCapabilities by remember { mutableStateOf<Map<String, ServerCapabilities>>(emptyMap()) }
+    
+    // Dialog state for parameter input
+    var showingToolDialog by remember { mutableStateOf<ToolInfo?>(null) }
+    var showingPromptDialog by remember { mutableStateOf<PromptInfo?>(null) }
+    var showingDialogForServer by remember { mutableStateOf("") }
+    
+    val gson = remember { Gson() }
+    
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        item {
         // Header
         Text(
             text = "MCP Client Test App",
@@ -228,15 +268,197 @@ fun MCPClientTestScreen(
                                     Button(
                                         onClick = {
                                             lifecycleScope.launch {
-                                                testServerCapabilities(mcpClient, serverPackage) { result ->
-                                                    Log.i(TAG, "TEST RESULT: $result")
-                                                    testResults = testResults + result
+                                                // First ensure connection
+                                                if (!mcpClient.isConnectedTo(serverPackage)) {
+                                                    val connectionResult = mcpClient.connectToServer(serverPackage)
+                                                    if (connectionResult.isFailure) {
+                                                        testResults = testResults + "$serverPackage: Connection failed"
+                                                        return@launch
+                                                    }
+                                                }
+                                                
+                                                // Discover capabilities
+                                                discoverServerCapabilities(mcpClient, serverPackage) { capabilities ->
+                                                    serverCapabilities = serverCapabilities + (serverPackage to capabilities)
+                                                    val summary = buildString {
+                                                        append("$serverPackage: ")
+                                                        append("Tools: ${capabilities.tools.size}, ")
+                                                        append("Resources: ${capabilities.resources.size}, ")
+                                                        append("Prompts: ${capabilities.prompts.size}")
+                                                    }
+                                                    Log.i(TAG, "Discovered capabilities - $summary")
+                                                    testResults = testResults + summary
                                                 }
                                             }
                                         },
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Text("Test All")
+                                        Text("Discover")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Dynamic Capability Buttons Section
+        serverCapabilities.forEach { (serverPackage, capabilities) ->
+            if (capabilities.tools.isNotEmpty() || capabilities.resources.isNotEmpty() || capabilities.prompts.isNotEmpty()) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val serverName = serverPackage.substringAfterLast('.')
+                        Text(
+                            text = "$serverName Capabilities",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        // Tools section
+                        if (capabilities.tools.isNotEmpty()) {
+                            Text(
+                                text = "Tools:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            capabilities.tools.forEach { tool ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = tool.name.ifEmpty { tool.id },
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        if (tool.description.isNotEmpty()) {
+                                            Text(
+                                                text = tool.description,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                        
+                                        // Parse schema to show parameters
+                                        val schema = try {
+                                            gson.fromJson(tool.parametersSchema, Map::class.java)
+                                        } catch (e: Exception) {
+                                            null
+                                        }
+                                        
+                                        val requiredParams = (schema?.get("required") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                                        val properties = schema?.get("properties") as? Map<*, *>
+                                        val allParams = properties?.keys?.filterIsInstance<String>() ?: emptyList()
+                                        
+                                        if (allParams.isNotEmpty() && properties != null) {
+                                            Text(
+                                                text = "Parameters:",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            allParams.forEach { param ->
+                                                val paramInfo = properties[param] as? Map<*, *>
+                                                val paramType = paramInfo?.get("type") as? String ?: "string"
+                                                val paramDesc = paramInfo?.get("description") as? String ?: param
+                                                val isRequired = requiredParams.contains(param)
+                                                val defaultValue = paramInfo?.get("default")
+                                                Text(
+                                                    text = "• $param ($paramType)${if (isRequired) " *" else ""}: $paramDesc${if (defaultValue != null) " (default: $defaultValue)" else ""}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    modifier = Modifier.padding(start = 8.dp)
+                                                )
+                                            }
+                                        }
+                                        
+                                        OutlinedButton(
+                                            onClick = {
+                                                // Show parameter input dialog
+                                                showingToolDialog = tool
+                                                showingDialogForServer = serverPackage
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Execute")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Resources section
+                        if (capabilities.resources.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Resources:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            capabilities.resources.forEach { resource ->
+                                OutlinedButton(
+                                    onClick = {
+                                        lifecycleScope.launch {
+                                            readResourceWithUI(mcpClient, serverPackage, resource) { result ->
+                                                testResults = testResults + result
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Read: $resource")
+                                }
+                            }
+                        }
+                        
+                        // Prompts section
+                        if (capabilities.prompts.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Prompts:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            capabilities.prompts.forEach { prompt ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = prompt.name.ifEmpty { prompt.id },
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        if (prompt.description.isNotEmpty()) {
+                                            Text(
+                                                text = prompt.description,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                        
+                                        OutlinedButton(
+                                            onClick = {
+                                                // Show parameter input dialog for prompts
+                                                showingPromptDialog = prompt
+                                                showingDialogForServer = serverPackage
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Get prompt")
+                                        }
                                     }
                                 }
                             }
@@ -289,6 +511,43 @@ fun MCPClientTestScreen(
                 }
             }
         }
+        }
+    }
+    
+    // Parameter input dialog for tools
+    showingToolDialog?.let { tool ->
+        ParameterInputDialog(
+            title = tool.name.ifEmpty { tool.id },
+            parametersSchema = tool.parametersSchema,
+            gson = gson,
+            onDismiss = { showingToolDialog = null },
+            onConfirm = { params ->
+                lifecycleScope.launch {
+                    executeToolWithUI(mcpClient, showingDialogForServer, tool, params) { result ->
+                        testResults = testResults + result
+                    }
+                }
+                showingToolDialog = null
+            }
+        )
+    }
+    
+    // Parameter input dialog for prompts
+    showingPromptDialog?.let { prompt ->
+        ParameterInputDialog(
+            title = prompt.name.ifEmpty { prompt.id },
+            parametersSchema = prompt.parametersSchema,
+            gson = gson,
+            onDismiss = { showingPromptDialog = null },
+            onConfirm = { params ->
+                lifecycleScope.launch {
+                    getPromptWithUI(mcpClient, showingDialogForServer, prompt, params) { result ->
+                        testResults = testResults + result
+                    }
+                }
+                showingPromptDialog = null
+            }
+        )
     }
 }
 
@@ -460,6 +719,366 @@ private suspend fun testServerCapabilities(
         val errorMsg = "$packageName Test: ERROR - ${e.message}"
         Log.e(TAG, errorMsg, e)
         onResult(errorMsg)
+    }
+}
+
+// Helper function to discover server capabilities
+private suspend fun discoverServerCapabilities(
+    mcpClient: McpClient,
+    packageName: String,
+    onResult: (ServerCapabilities) -> Unit
+) {
+    val connection = mcpClient.getConnection(packageName) ?: return
+    
+    val toolsList = mutableListOf<ToolInfo>()
+    val resourcesList = mutableListOf<String>()
+    val promptsList = mutableListOf<PromptInfo>()
+    
+    // Discover tools with their info
+    if (connection.hasTools) {
+        val toolsResult = mcpClient.listTools(packageName)
+        if (toolsResult.isSuccess) {
+            val toolIds = toolsResult.getOrNull() ?: emptyList()
+            Log.d(TAG, "Discovered ${toolIds.size} tools: ${toolIds.joinToString(", ")}")
+            
+            // Get detailed info for each tool
+            toolIds.forEach { toolId ->
+                try {
+                    val toolInfoResult = mcpClient.getToolInfo(packageName, toolId)
+                    if (toolInfoResult.isSuccess) {
+                        val toolInfo = toolInfoResult.getOrNull()
+                        if (!toolInfo.isNullOrEmpty()) {
+                            // Parse format: "name:description:parametersSchema"
+                            val parts = toolInfo.split(":", limit = 3)
+                            toolsList.add(ToolInfo(
+                                id = toolId,
+                                name = parts.getOrNull(0) ?: toolId,
+                                description = parts.getOrNull(1) ?: "",
+                                parametersSchema = parts.getOrNull(2) ?: "{}"
+                            ))
+                            Log.d(TAG, "Tool '$toolId' schema: ${parts.getOrNull(2)}")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to get info for tool '$toolId'", e)
+                    // Add basic info anyway
+                    toolsList.add(ToolInfo(id = toolId))
+                }
+            }
+        }
+    }
+    
+    // Discover resources
+    if (connection.hasResources) {
+        val resourcesResult = mcpClient.listResources(packageName)
+        if (resourcesResult.isSuccess) {
+            resourcesList.addAll(resourcesResult.getOrNull() ?: emptyList())
+            Log.d(TAG, "Discovered ${resourcesList.size} resources: ${resourcesList.joinToString(", ")}")
+        }
+    }
+    
+    // Discover prompts with their info
+    if (connection.hasPrompts) {
+        val promptsResult = mcpClient.listPrompts(packageName)
+        if (promptsResult.isSuccess) {
+            val promptIds = promptsResult.getOrNull() ?: emptyList()
+            Log.d(TAG, "Discovered ${promptIds.size} prompts: ${promptIds.joinToString(", ")}")
+            
+            // Get detailed info for each prompt
+            promptIds.forEach { promptId ->
+                try {
+                    val promptInfoResult = mcpClient.getPromptInfo(packageName, promptId)
+                    if (promptInfoResult.isSuccess) {
+                        val promptInfo = promptInfoResult.getOrNull()
+                        if (!promptInfo.isNullOrEmpty()) {
+                            // Parse format: "name:description:parametersSchema"
+                            val parts = promptInfo.split(":", limit = 3)
+                            promptsList.add(PromptInfo(
+                                id = promptId,
+                                name = parts.getOrNull(0) ?: promptId,
+                                description = parts.getOrNull(1) ?: "",
+                                parametersSchema = parts.getOrNull(2) ?: "{}"
+                            ))
+                            Log.d(TAG, "Prompt '$promptId' schema: ${parts.getOrNull(2)}")
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to get info for prompt '$promptId'", e)
+                    // Add basic info anyway
+                    promptsList.add(PromptInfo(id = promptId))
+                }
+            }
+        }
+    }
+    
+    onResult(ServerCapabilities(
+        tools = toolsList,
+        resources = resourcesList,
+        prompts = promptsList
+    ))
+}
+
+// Helper function to execute tool with UI feedback
+private suspend fun executeToolWithUI(
+    mcpClient: McpClient,
+    packageName: String,
+    tool: ToolInfo,
+    parameters: Map<String, Any> = emptyMap(),
+    onResult: (String) -> Unit
+) {
+    try {
+        Log.d(TAG, "Executing tool '${tool.id}' on $packageName with parameters: $parameters")
+        val result = mcpClient.executeTool(packageName, tool.id, parameters)
+        
+        if (result.isSuccess) {
+            val message = "Tool '${tool.name.ifEmpty { tool.id }}': ${result.getOrNull()}"
+            Log.i(TAG, message)
+            onResult(message)
+        } else {
+            val error = result.exceptionOrNull()
+            val message = "Tool '${tool.name.ifEmpty { tool.id }}' failed: ${error?.message ?: "Unknown error"}"
+            Log.e(TAG, message, error)
+            onResult(message)
+        }
+    } catch (e: Exception) {
+        val message = "Tool '${tool.name.ifEmpty { tool.id }}' error: ${e.message}"
+        Log.e(TAG, message, e)
+        onResult(message)
+    }
+}
+
+// Helper function to read resource with UI feedback
+private suspend fun readResourceWithUI(
+    mcpClient: McpClient,
+    packageName: String,
+    resourceUri: String,
+    onResult: (String) -> Unit
+) {
+    try {
+        Log.d(TAG, "Reading resource '$resourceUri' from $packageName")
+        val result = mcpClient.readResource(packageName, resourceUri)
+        
+        if (result.isSuccess) {
+            val content = result.getOrNull() ?: ""
+            val preview = if (content.length > 100) content.take(100) + "..." else content
+            val message = "Resource '$resourceUri': $preview"
+            Log.i(TAG, "Resource read success: $resourceUri")
+            onResult(message)
+        } else {
+            val error = result.exceptionOrNull()
+            val message = "Resource '$resourceUri' failed: ${error?.message ?: "Unknown error"}"
+            Log.e(TAG, message, error)
+            onResult(message)
+        }
+    } catch (e: Exception) {
+        val message = "Resource '$resourceUri' error: ${e.message}"
+        Log.e(TAG, message, e)
+        onResult(message)
+    }
+}
+
+// Helper function to get prompt with UI feedback
+private suspend fun getPromptWithUI(
+    mcpClient: McpClient,
+    packageName: String,
+    prompt: PromptInfo,
+    parameters: Map<String, Any> = emptyMap(),
+    onResult: (String) -> Unit
+) {
+    try {
+        Log.d(TAG, "Getting prompt '${prompt.id}' from $packageName")
+        val result = mcpClient.getPrompt(packageName, prompt.id, parameters)
+        
+        if (result.isSuccess) {
+            val content = result.getOrNull() ?: ""
+            val preview = if (content.length > 100) content.take(100) + "..." else content
+            val message = "Prompt '${prompt.name.ifEmpty { prompt.id }}': $preview"
+            Log.i(TAG, "Prompt retrieved: ${prompt.id}")
+            onResult(message)
+        } else {
+            val error = result.exceptionOrNull()
+            val message = "Prompt '${prompt.name.ifEmpty { prompt.id }}' failed: ${error?.message ?: "Unknown error"}"
+            Log.e(TAG, message, error)
+            onResult(message)
+        }
+    } catch (e: Exception) {
+        val message = "Prompt '${prompt.name.ifEmpty { prompt.id }}' error: ${e.message}"
+        Log.e(TAG, message, e)
+        onResult(message)
+    }
+}
+
+@Composable
+fun ParameterInputDialog(
+    title: String,
+    parametersSchema: String,
+    gson: Gson,
+    onDismiss: () -> Unit,
+    onConfirm: (Map<String, Any>) -> Unit
+) {
+    val schema = try {
+        gson.fromJson(parametersSchema, Map::class.java)
+    } catch (e: Exception) {
+        null
+    }
+    
+    val properties = schema?.get("properties") as? Map<*, *> ?: emptyMap<String, Any>()
+    val requiredParams = (schema?.get("required") as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+    
+    // State for each parameter
+    val parameterValues = remember { mutableStateMapOf<String, String>() }
+    
+    // Initialize with defaults
+    LaunchedEffect(properties) {
+        properties.forEach { (key, value) ->
+            val paramInfo = value as? Map<*, *>
+            val defaultValue = paramInfo?.get("default")
+            if (defaultValue != null && key is String) {
+                parameterValues[key] = defaultValue.toString()
+            }
+        }
+    }
+    
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                HorizontalDivider()
+                
+                // Input fields for each parameter
+                properties.forEach { (paramName, paramValue) ->
+                    if (paramName is String) {
+                        val paramInfo = paramValue as? Map<*, *>
+                        val paramType = paramInfo?.get("type") as? String ?: "string"
+                        val paramDesc = paramInfo?.get("description") as? String ?: paramName
+                        val isRequired = requiredParams.contains(paramName)
+                        val enumValues = (paramInfo?.get("enum") as? List<*>)?.filterIsInstance<String>()
+                        
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "$paramName${if (isRequired) " *" else ""}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = paramDesc,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            if (enumValues != null) {
+                                // Dropdown for enum values
+                                var expanded by remember { mutableStateOf(false) }
+                                Box {
+                                    OutlinedButton(
+                                        onClick = { expanded = true },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(parameterValues[paramName] ?: enumValues.firstOrNull() ?: "Select")
+                                    }
+                                    DropdownMenu(
+                                        expanded = expanded,
+                                        onDismissRequest = { expanded = false }
+                                    ) {
+                                        enumValues.forEach { value ->
+                                            DropdownMenuItem(
+                                                text = { Text(value) },
+                                                onClick = {
+                                                    parameterValues[paramName] = value
+                                                    expanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Text field for other types
+                                TextField(
+                                    value = parameterValues[paramName] ?: "",
+                                    onValueChange = { parameterValues[paramName] = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    placeholder = { 
+                                        Text(
+                                            when (paramType) {
+                                                "integer", "number" -> "Enter number"
+                                                "boolean" -> "true or false"
+                                                else -> "Enter $paramType"
+                                            }
+                                        )
+                                    },
+                                    singleLine = true
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                HorizontalDivider()
+                
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancel")
+                    }
+                    
+                    Button(
+                        onClick = {
+                            // Convert parameter values to appropriate types
+                            val params = mutableMapOf<String, Any>()
+                            properties.forEach { (key, value) ->
+                                if (key is String) {
+                                    val paramInfo = value as? Map<*, *>
+                                    val paramType = paramInfo?.get("type") as? String ?: "string"
+                                    val paramValue = parameterValues[key]
+                                    
+                                    if (!paramValue.isNullOrEmpty()) {
+                                        params[key] = when (paramType) {
+                                            "integer" -> paramValue.toIntOrNull() ?: 0
+                                            "number" -> paramValue.toDoubleOrNull() ?: 0.0
+                                            "boolean" -> paramValue.toBoolean()
+                                            else -> paramValue
+                                        }
+                                    } else if (requiredParams.contains(key)) {
+                                        // Use default for required params if empty
+                                        params[key] = when (paramType) {
+                                            "integer" -> 0
+                                            "number" -> 0.0
+                                            "boolean" -> false
+                                            else -> ""
+                                        }
+                                    }
+                                }
+                            }
+                            onConfirm(params)
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Execute")
+                    }
+                }
+            }
+        }
     }
 }
 
