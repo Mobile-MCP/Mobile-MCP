@@ -28,3 +28,4 @@ includeBuild("../shared/MMCPCore") {
         substitute(module("io.rosenpin.mcp:mmcp")).using(project(":mmcp"))
     }
 }
+include(":phonemcpserver")

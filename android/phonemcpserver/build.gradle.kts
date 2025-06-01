@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "io.rosenpin.mcp.example"
+    namespace = "io.rosenpin.mcp.phonemcpserver"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "io.rosenpin.mcp.example"
+        applicationId = "io.rosenpin.mcp.phonemcpserver"
         minSdk = 33
         targetSdk = 35
         versionCode = 1
@@ -40,7 +40,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":mmcp-client-android"))
+    implementation(project(":mmcp-server-android"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -50,6 +50,9 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    
+    // Material Components for proper theme support
+    implementation("com.google.android.material:material:1.12.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
