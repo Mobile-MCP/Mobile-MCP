@@ -44,7 +44,7 @@ abstract class MCPServiceBase : Service() {
     }
     
     // Service discovery and method registry
-    private var serverInfo: io.rosenpin.mmcp.server.annotations.ServerInfo? = null
+    private var serverInfo: ServerInfo? = null
     private var methodRegistry: MCPMethodRegistry? = null
     private val annotationProcessor = MCPAnnotationProcessor()
     
@@ -115,10 +115,8 @@ abstract class MCPServiceBase : Service() {
         override fun getCapabilities(): String {
             return try {
                 val info = serverInfo ?: return "Service not initialized"
-                val typedInfo = info as io.rosenpin.mmcp.server.annotations.ServerInfo
+                val typedInfo = info as ServerInfo
                 
-                // ARCHITECTURAL FIX: Return simple capability list, not full JSON-RPC response
-                // Full MCP protocol formatting belongs in client library
                 typedInfo.capabilities.joinToString(",")
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting capabilities", e)
@@ -129,12 +127,10 @@ abstract class MCPServiceBase : Service() {
         override fun initialize(clientInfo: String?, callback: IMcpServiceCallback?): String {
             return try {
                 val info = serverInfo ?: return "Service not initialized"
-                val typedInfo = info as io.rosenpin.mmcp.server.annotations.ServerInfo
+                val typedInfo = info as ServerInfo
                 
                 Log.i(TAG, "Client initializing: ${clientInfo ?: "Unknown"}")
                 
-                // ARCHITECTURAL FIX: Return simple server info, not full JSON-RPC response
-                // Full MCP protocol formatting belongs in client library
                 "${typedInfo.name}|${typedInfo.version}|${typedInfo.description}"
             } catch (e: Exception) {
                 Log.e(TAG, "Error during initialization", e)
@@ -150,9 +146,8 @@ abstract class MCPServiceBase : Service() {
         override fun getServerInfo(): String {
             return try {
                 val server = serverInfo ?: return "Service not initialized"
-                val typedServer = server as io.rosenpin.mmcp.server.annotations.ServerInfo
+                val typedServer = server as ServerInfo
                 
-                // ARCHITECTURAL FIX: Return simple info, not JSON
                 "${typedServer.id}|${typedServer.name}|${typedServer.description}|${typedServer.version}"
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting server info", e)
@@ -161,7 +156,7 @@ abstract class MCPServiceBase : Service() {
         }
         
         override fun supportsCapability(capability: String?): Boolean {
-            return capability != null && (serverInfo as? io.rosenpin.mmcp.server.annotations.ServerInfo)?.capabilities?.contains(capability) == true
+            return capability != null && (serverInfo as? ServerInfo)?.capabilities?.contains(capability) == true
         }
         
         override fun registerCallback(callback: IMcpServiceCallback?) {
