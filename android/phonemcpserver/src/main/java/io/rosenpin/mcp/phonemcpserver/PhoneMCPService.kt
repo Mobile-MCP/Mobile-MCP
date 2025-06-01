@@ -35,7 +35,7 @@ class PhoneMCPService : ContextAwareMCPService() {
             "type": "object",
             "properties": {
                 "limit": {
-                    "type": "number",
+                    "type": "integer",
                     "description": "Maximum number of contacts to return",
                     "default": 100
                 }
@@ -44,7 +44,7 @@ class PhoneMCPService : ContextAwareMCPService() {
         """
     )
     fun getContacts(@MCPParam("limit") limit: Int = 100): String {
-        requireCallerPermission(Manifest.permission.READ_CONTACTS)
+        requireServerPermission(Manifest.permission.READ_CONTACTS)
         
         val contacts = mutableListOf<Map<String, Any>>()
         val cursor: Cursor? = appContext.contentResolver.query(
@@ -95,7 +95,7 @@ class PhoneMCPService : ContextAwareMCPService() {
         """
     )
     fun getContactByName(@MCPParam("name") name: String): String {
-        requireCallerPermission(Manifest.permission.READ_CONTACTS)
+        requireServerPermission(Manifest.permission.READ_CONTACTS)
         
         val cursor: Cursor? = appContext.contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
@@ -145,7 +145,7 @@ class PhoneMCPService : ContextAwareMCPService() {
         """
     )
     fun makeCall(@MCPParam("phoneNumber") phoneNumber: String): String {
-        requireCallerPermission(Manifest.permission.CALL_PHONE)
+        requireServerPermission(Manifest.permission.CALL_PHONE)
         
         try {
             val telecomManager = getTypedSystemService(TelecomManager::class.java)
@@ -168,7 +168,7 @@ class PhoneMCPService : ContextAwareMCPService() {
             "type": "object",
             "properties": {
                 "limit": {
-                    "type": "number",
+                    "type": "integer",
                     "description": "Maximum number of call records to return",
                     "default": 20
                 },
@@ -183,7 +183,7 @@ class PhoneMCPService : ContextAwareMCPService() {
         """
     )
     fun getCallHistory(@MCPParam("limit") limit: Int = 20, @MCPParam("callType") callType: String = "all"): String {
-        requireCallerPermission(Manifest.permission.READ_CALL_LOG)
+        requireServerPermission(Manifest.permission.READ_CALL_LOG)
         
         val selection = when (callType) {
             "incoming" -> "${CallLog.Calls.TYPE} = ${CallLog.Calls.INCOMING_TYPE}"
@@ -241,7 +241,7 @@ class PhoneMCPService : ContextAwareMCPService() {
         mimeType = "application/json"
     )
     fun getContactResource(uri: String): String {
-        requireCallerPermission(Manifest.permission.READ_CONTACTS)
+        requireServerPermission(Manifest.permission.READ_CONTACTS)
         
         val contactId = uri.substringAfter("contact://")
         val cursor: Cursor? = appContext.contentResolver.query(
@@ -299,8 +299,8 @@ class PhoneMCPService : ContextAwareMCPService() {
         """
     )
     fun generateContactSummary(@MCPParam("contactName") contactName: String): String {
-        requireCallerPermission(Manifest.permission.READ_CONTACTS)
-        requireCallerPermission(Manifest.permission.READ_CALL_LOG)
+        requireServerPermission(Manifest.permission.READ_CONTACTS)
+        requireServerPermission(Manifest.permission.READ_CALL_LOG)
         
         return "Contact Summary for $contactName: This contact has been in your phone for analysis. Recent communication patterns and interaction history would be displayed here."
     }

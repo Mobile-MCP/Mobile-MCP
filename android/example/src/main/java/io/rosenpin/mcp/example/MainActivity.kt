@@ -1055,7 +1055,15 @@ fun ParameterInputDialog(
                                     if (!paramValue.isNullOrEmpty()) {
                                         params[key] = when (paramType) {
                                             "integer" -> paramValue.toIntOrNull() ?: 0
-                                            "number" -> paramValue.toDoubleOrNull() ?: 0.0
+                                            "number" -> {
+                                                // Check if it's actually an integer value
+                                                val doubleValue = paramValue.toDoubleOrNull() ?: 0.0
+                                                if (doubleValue % 1.0 == 0.0) {
+                                                    doubleValue.toInt()
+                                                } else {
+                                                    doubleValue
+                                                }
+                                            }
                                             "boolean" -> paramValue.toBoolean()
                                             else -> paramValue
                                         }
@@ -1063,7 +1071,7 @@ fun ParameterInputDialog(
                                         // Use default for required params if empty
                                         params[key] = when (paramType) {
                                             "integer" -> 0
-                                            "number" -> 0.0
+                                            "number" -> 0
                                             "boolean" -> false
                                             else -> ""
                                         }

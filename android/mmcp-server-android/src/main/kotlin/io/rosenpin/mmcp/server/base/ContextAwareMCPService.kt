@@ -69,11 +69,32 @@ abstract class ContextAwareMCPService : MCPServiceBase() {
     }
     
     /**
-     * Check if the calling package has a specific permission.
+     * Check if the server itself has a specific permission.
      * 
-     * This is useful for protecting sensitive MCP tools behind permission checks.
+     * This is the correct MCP pattern - the server needs permissions to access protected resources
+     * and act as a secure gateway for clients.
      * 
      * @param permission The permission to check (e.g., Manifest.permission.READ_CONTACTS)
+     * @return true if the server has the permission, false otherwise
+     */
+    protected fun checkServerPermission(permission: String): Boolean {
+        return try {
+            // Check if this server app has the permission
+            val result = appContext.checkSelfPermission(permission)
+            result == PackageManager.PERMISSION_GRANTED
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to check server permission $permission", e)
+            false
+        }
+    }
+    
+    /**
+     * Check if the calling package has a specific permission.
+     * 
+     * NOTE: In MCP architecture, you usually want checkServerPermission instead.
+     * This method is retained for cases where you need to verify client identity.
+     * 
+     * @param permission The permission to check (e.g., custom app permissions)
      * @return true if the caller has the permission, false otherwise
      */
     protected fun checkCallerPermission(permission: String): Boolean {
@@ -118,16 +139,37 @@ abstract class ContextAwareMCPService : MCPServiceBase() {
     }
     
     /**
-     * Require that the caller has a specific permission, throwing an exception if not.
+     * Require that the server itself has a specific permission, throwing an exception if not.
+     * 
+     * This is the correct MCP pattern - the server needs permissions, not the client.
+     * The server acts as a secure gateway to protected resources.
      * 
      * @param permission The required permission
-     * @throws SecurityException if the caller doesn't have the permission
+     * @throws SecurityException if the server doesn't have the permission
      */
-    protected fun requireCallerPermission(permission: String) {
-        if (!checkCallerPermission(permission)) {
-            val callerPackage = getCallerPackageName() ?: "unknown"
-            throw SecurityException("Caller $callerPackage does not have permission $permission")
+    protected fun requireServerPermission(permission: String) {
+        if (!checkServerPermission(permission)) {
+            throw SecurityException("""
+                MCP Server ${appContext.packageName} does not have permission: $permission
+                
+                The MCP architecture requires the SERVER to have permissions, not the client.
+                Please ensure:
+                1. The permission is declared in the server's AndroidManifest.xml
+                2. The user has granted this permission to the server app
+                
+                The client app (${getCallerPackageName()}) does NOT need this permission.
+            """.trimIndent())
         }
+    }
+    
+    /**
+     * Legacy method - DO NOT USE. Use requireServerPermission instead.
+     * @deprecated The MCP architecture requires servers to have permissions, not clients
+     */
+    @Deprecated("Use requireServerPermission instead", ReplaceWith("requireServerPermission(permission)"))
+    protected fun requireCallerPermission(permission: String) {
+        // For backward compatibility, redirect to the correct method
+        requireServerPermission(permission)
     }
     
     /**

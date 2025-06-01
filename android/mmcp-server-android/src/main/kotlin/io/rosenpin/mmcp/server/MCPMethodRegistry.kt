@@ -344,7 +344,12 @@ class MCPMethodRegistry(
                         val actualType = when (value) {
                             is String -> "string"
                             is Int, is Long -> "integer"
-                            is Float, is Double -> "number"
+                            is Float, is Double -> {
+                                // For numbers, check if it's actually an integer value
+                                if (value is Double && value % 1.0 == 0.0) "integer (as double)"
+                                else if (value is Float && value % 1.0f == 0.0f) "integer (as float)"
+                                else "number"
+                            }
                             is Boolean -> "boolean"
                             is List<*> -> "array"
                             is Map<*, *> -> "object"
@@ -363,7 +368,19 @@ class MCPMethodRegistry(
         return when (expectedType) {
             "string" -> value is String
             "number" -> value is Number
-            "integer" -> value is Int || value is Long
+            "integer" -> {
+                // Gson parses all JSON numbers as Double, so we need to check if it's a whole number
+                when (value) {
+                    is Int, is Long -> true
+                    is Double -> value % 1.0 == 0.0 // Check if it's a whole number
+                    is Float -> value % 1.0f == 0.0f
+                    is Number -> {
+                        val doubleValue = value.toDouble()
+                        doubleValue % 1.0 == 0.0
+                    }
+                    else -> false
+                }
+            }
             "boolean" -> value is Boolean
             "array" -> value is List<*> || value is Array<*>
             "object" -> value is Map<*, *>

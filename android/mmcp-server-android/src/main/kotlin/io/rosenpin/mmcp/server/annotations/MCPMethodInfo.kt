@@ -33,8 +33,27 @@ fun convertParameterType(value: Any?, targetType: Class<*>): Any? {
         }
         targetType == Int::class.java || targetType == Int::class.javaPrimitiveType -> {
             when (value) {
+                is Double -> value.toInt() // Gson parses all numbers as Double
+                is Float -> value.toInt()
                 is Number -> value.toInt()
                 is String -> value.toIntOrNull() ?: 0
+                else -> value
+            }
+        }
+        targetType == Long::class.java || targetType == Long::class.javaPrimitiveType -> {
+            when (value) {
+                is Double -> value.toLong() // Gson parses all numbers as Double
+                is Float -> value.toLong()
+                is Number -> value.toLong()
+                is String -> value.toLongOrNull() ?: 0L
+                else -> value
+            }
+        }
+        targetType == Float::class.java || targetType == Float::class.javaPrimitiveType -> {
+            when (value) {
+                is Double -> value.toFloat() // Gson parses all numbers as Double
+                is Number -> value.toFloat()
+                is String -> value.toFloatOrNull() ?: 0f
                 else -> value
             }
         }
