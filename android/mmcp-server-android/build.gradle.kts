@@ -29,6 +29,12 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
@@ -42,6 +48,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlin.reflect)
+    implementation(libs.gson)
     
     // Testing
     testImplementation(libs.junit)

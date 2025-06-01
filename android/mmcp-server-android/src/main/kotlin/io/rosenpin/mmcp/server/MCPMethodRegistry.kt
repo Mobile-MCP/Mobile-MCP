@@ -1,10 +1,10 @@
 package io.rosenpin.mmcp.server
 
 import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import io.rosenpin.mmcp.server.annotations.*
 import kotlinx.coroutines.*
-import org.json.JSONArray
-import org.json.JSONObject
 import java.lang.reflect.Method
 import java.net.URI
 import kotlin.coroutines.Continuation
@@ -18,12 +18,13 @@ import kotlin.reflect.jvm.kotlinFunction
  * according to MCP protocol specifications.
  */
 class MCPMethodRegistry(
-    private val serverInfo: MCPServerInfo,
+    private val serverInfo: ServerInfo,
     private val serverInstance: Any
 ) {
     
     companion object {
         private const val TAG = "MCPMethodRegistry"
+        private val gson = Gson()
     }
     
     // Keep track of async executions for cancellation/status
@@ -97,11 +98,11 @@ class MCPMethodRegistry(
                 runningExecutions[executionId] = job
                 
                 // Return execution ID for async tracking
-                JSONObject(mapOf(
+                gson.toJson(mapOf(
                     "executionId" to executionId,
                     "status" to "running",
                     "async" to true
-                )).toString()
+                ))
                 
             } else {
                 // Synchronous execution  
@@ -176,11 +177,11 @@ class MCPMethodRegistry(
                 runningExecutions[executionId] = job
                 
                 // Return execution ID for async tracking
-                JSONObject(mapOf(
+                gson.toJson(mapOf(
                     "executionId" to executionId,
                     "status" to "running",
                     "async" to true
-                )).toString()
+                ))
                 
             } else {
                 // Synchronous execution
@@ -262,11 +263,11 @@ class MCPMethodRegistry(
                 runningExecutions[executionId] = job
                 
                 // Return execution ID for async tracking
-                JSONObject(mapOf(
+                gson.toJson(mapOf(
                     "executionId" to executionId,
                     "status" to "running",
                     "async" to true
-                )).toString()
+                ))
                 
             } else {
                 // Synchronous execution
@@ -285,16 +286,20 @@ class MCPMethodRegistry(
     // ===================================================================================
     
     private fun parseParameters(parametersJson: String?): Map<String, Any> {
-        if (parametersJson.isNullOrBlank()) return emptyMap()
+        if (parametersJson.isNullOrBlank()) {
+            return emptyMap()
+        }
         
         return try {
-            val jsonObject = JSONObject(parametersJson)
-            jsonObject.toMap()
+            // Use Gson for reliable JSON parsing in both Android and unit tests
+            val type = object : TypeToken<Map<String, Any>>() {}.type
+            gson.fromJson(parametersJson, type) ?: emptyMap()
         } catch (e: Exception) {
             Log.w(TAG, "Failed to parse parameters JSON: $parametersJson", e)
             emptyMap()
         }
     }
+    
     
     private fun validateParameters(parameters: Map<String, Any>, schema: String): List<String> {
         // Basic parameter validation against JSON schema
@@ -302,36 +307,44 @@ class MCPMethodRegistry(
         val errors = mutableListOf<String>()
         
         try {
-            val schemaObj = JSONObject(schema)
-            val required = schemaObj.optJSONArray("required")
-            val properties = schemaObj.optJSONObject("properties")
-            
-            // Check required parameters
-            if (required != null) {
-                for (i in 0 until required.length()) {
-                    val requiredParam = required.getString(i)
-                    if (!parameters.containsKey(requiredParam)) {
-                        errors.add("Missing required parameter: $requiredParam")
-                    }
-                }
-            }
-            
-            // Basic type checking for provided parameters
-            if (properties != null) {
-                parameters.forEach { (paramName, value) ->
-                    val propSchema = properties.optJSONObject(paramName)
-                    if (propSchema != null) {
-                        val expectedType = propSchema.optString("type")
-                        if (!isValidParameterType(value, expectedType)) {
-                            errors.add("Parameter '$paramName' has invalid type. Expected: $expectedType, got: ${value::class.simpleName}")
-                        }
-                    }
-                }
+            // Use Gson for reliable schema parsing
+            val type = object : TypeToken<Map<String, Any>>() {}.type
+            val schemaMap = gson.fromJson<Map<String, Any>>(schema, type)
+            if (schemaMap != null) {
+                return validateParametersFromMap(parameters, schemaMap)
             }
             
         } catch (e: Exception) {
             Log.w(TAG, "Error validating parameters against schema", e)
             // Don't fail validation if schema parsing fails
+        }
+        
+        return errors
+    }
+    
+    private fun validateParametersFromMap(parameters: Map<String, Any>, schemaMap: Map<String, Any>): List<String> {
+        val errors = mutableListOf<String>()
+        
+        // Check required parameters
+        val requiredList = schemaMap["required"] as? List<*>
+        requiredList?.forEach { requiredParam ->
+            if (requiredParam is String && !parameters.containsKey(requiredParam)) {
+                errors.add("Missing required parameter: $requiredParam")
+            }
+        }
+        
+        // Basic type checking for provided parameters 
+        val properties = schemaMap["properties"] as? Map<*, *>
+        if (properties != null) {
+            parameters.forEach { (paramName, value) ->
+                val propSchema = properties[paramName] as? Map<*, *>
+                if (propSchema != null) {
+                    val expectedType = propSchema["type"] as? String
+                    if (expectedType != null && !isValidParameterType(value, expectedType)) {
+                        errors.add("Parameter '$paramName' has invalid type. Expected: $expectedType, got: ${value::class.simpleName}")
+                    }
+                }
+            }
         }
         
         return errors
@@ -343,8 +356,8 @@ class MCPMethodRegistry(
             "number" -> value is Number
             "integer" -> value is Int || value is Long
             "boolean" -> value is Boolean
-            "array" -> value is List<*> || value is Array<*> || value is JSONArray
-            "object" -> value is Map<*, *> || value is JSONObject
+            "array" -> value is List<*> || value is Array<*>
+            "object" -> value is Map<*, *>
             else -> true // Unknown type, allow it
         }
     }
@@ -423,46 +436,9 @@ class MCPMethodRegistry(
     }
     
     private fun createErrorResponse(message: String): String {
-        return JSONObject(mapOf(
-            "error" to mapOf(
-                "code" to -32603,
-                "message" to message,
-                "timestamp" to System.currentTimeMillis()
-            )
-        )).toString()
+        // ARCHITECTURAL FIX: Return simple error string, not JSON
+        // Error formatting belongs in the client library
+        return "Error: $message"
     }
     
-    /**
-     * Extension function to convert JSONObject to Map
-     */
-    private fun JSONObject.toMap(): Map<String, Any> {
-        val map = mutableMapOf<String, Any>()
-        val keys = this.keys()
-        while (keys.hasNext()) {
-            val key = keys.next()
-            val value = this.get(key)
-            map[key] = when (value) {
-                is JSONObject -> value.toMap()
-                is JSONArray -> value.toList()
-                else -> value
-            }
-        }
-        return map
-    }
-    
-    /**
-     * Extension function to convert JSONArray to List  
-     */
-    private fun JSONArray.toList(): List<Any> {
-        val list = mutableListOf<Any>()
-        for (i in 0 until this.length()) {
-            val value = this.get(i)
-            list.add(when (value) {
-                is JSONObject -> value.toMap()
-                is JSONArray -> value.toList()
-                else -> value
-            })
-        }
-        return list
-    }
 }
