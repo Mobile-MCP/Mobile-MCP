@@ -1,6 +1,8 @@
 package io.rosenpin.mmcp.server
 
 import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import io.rosenpin.mmcp.server.annotations.*
 import kotlinx.coroutines.*
 import org.json.JSONArray
@@ -24,6 +26,7 @@ class MCPMethodRegistry(
     
     companion object {
         private const val TAG = "MCPMethodRegistry"
+        private val gson = Gson()
     }
     
     // Keep track of async executions for cancellation/status
@@ -290,99 +293,15 @@ class MCPMethodRegistry(
         }
         
         return try {
-            // Try manual JSON parsing as fallback for unit tests where JSONObject is mocked
-            val result = parseJsonManually(parametersJson)
-            if (result.isNotEmpty()) {
-                return result
-            }
-            
-            // Fallback to JSONObject (works in real Android but not in unit tests)
-            val jsonObject = JSONObject(parametersJson)
-            jsonObject.toMap()
+            // Use Gson for reliable JSON parsing in both Android and unit tests
+            val type = object : TypeToken<Map<String, Any>>() {}.type
+            gson.fromJson(parametersJson, type) ?: emptyMap()
         } catch (e: Exception) {
             Log.w(TAG, "Failed to parse parameters JSON: $parametersJson", e)
             emptyMap()
         }
     }
     
-    // Simple manual JSON parser for basic test cases (only handles simple key-value pairs)
-    private fun parseJsonManually(json: String): Map<String, Any> {
-        val result = mutableMapOf<String, Any>()
-        
-        if (!json.trim().startsWith("{") || !json.trim().endsWith("}")) {
-            return emptyMap()
-        }
-        
-        val content = json.trim().removeSurrounding("{", "}")
-        if (content.isBlank()) return emptyMap()
-        
-        // Split by comma, but be careful about quotes
-        val pairs = mutableListOf<String>()
-        var current = ""
-        var inQuotes = false
-        var depth = 0
-        
-        for (char in content) {
-            when {
-                char == '"' && (current.isEmpty() || current.last() != '\\') -> inQuotes = !inQuotes
-                char == '{' || char == '[' -> depth++
-                char == '}' || char == ']' -> depth--
-                char == ',' && !inQuotes && depth == 0 -> {
-                    pairs.add(current.trim())
-                    current = ""
-                    continue
-                }
-            }
-            current += char
-        }
-        if (current.isNotBlank()) {
-            pairs.add(current.trim())
-        }
-        
-        // Parse each key-value pair
-        for (pair in pairs) {
-            val colonIndex = pair.indexOf(':')
-            if (colonIndex <= 0) continue
-            
-            val key = pair.substring(0, colonIndex).trim().removeSurrounding("\"")
-            val valueStr = pair.substring(colonIndex + 1).trim()
-            
-            val value = when {
-                valueStr == "null" -> null
-                valueStr == "true" -> true
-                valueStr == "false" -> false
-                valueStr.startsWith("\"") && valueStr.endsWith("\"") -> valueStr.removeSurrounding("\"")
-                valueStr.startsWith("[") && valueStr.endsWith("]") -> {
-                    // Handle arrays like ["a", "b"]
-                    val arrayContent = valueStr.removeSurrounding("[", "]").trim()
-                    if (arrayContent.isEmpty()) {
-                        emptyList<String>()
-                    } else {
-                        arrayContent.split(",").map { item ->
-                            val trimmed = item.trim()
-                            if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
-                                trimmed.removeSurrounding("\"")
-                            } else {
-                                trimmed
-                            }
-                        }
-                    }
-                }
-                valueStr.startsWith("{") && valueStr.endsWith("}") -> {
-                    // Handle nested objects
-                    parseJsonManually(valueStr)
-                }
-                valueStr.contains(".") -> valueStr.toDoubleOrNull() ?: valueStr
-                else -> valueStr.toIntOrNull() ?: valueStr
-            }
-            
-            if (value != null) {
-                result[key] = value
-            }
-        }
-        
-        return result
-    }
     
     private fun validateParameters(parameters: Map<String, Any>, schema: String): List<String> {
         // Basic parameter validation against JSON schema
@@ -390,13 +309,14 @@ class MCPMethodRegistry(
         val errors = mutableListOf<String>()
         
         try {
-            // First try manual schema parsing for unit tests
-            val schemaMap = parseJsonManually(schema)
-            if (schemaMap.isNotEmpty()) {
+            // Use Gson for reliable schema parsing
+            val type = object : TypeToken<Map<String, Any>>() {}.type
+            val schemaMap = gson.fromJson<Map<String, Any>>(schema, type)
+            if (schemaMap != null) {
                 return validateParametersFromMap(parameters, schemaMap)
             }
             
-            // Fallback to JSONObject for real Android
+            // Fallback to JSONObject if Gson fails
             val schemaObj = JSONObject(schema)
             val required = schemaObj.optJSONArray("required")
             val properties = schemaObj.optJSONObject("properties")
