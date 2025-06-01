@@ -11,7 +11,6 @@ import io.rosenpin.mmcp.mmcpcore.protocol.McpProtocolCore
 import io.rosenpin.mmcp.server.annotations.*
 import io.rosenpin.mmcp.server.annotations.ServerInfo
 import kotlinx.coroutines.*
-import org.json.JSONObject
 import java.lang.reflect.InvocationTargetException
 
 /**
@@ -410,16 +409,4 @@ abstract class MCPServiceBase : Service() {
         return "Error: $message"
     }
     
-    /**
-     * Extension function to convert JSONObject to Map
-     */
-    private fun JSONObject.toMap(): Map<String, Any> {
-        val map = mutableMapOf<String, Any>()
-        val keys = this.keys()
-        while (keys.hasNext()) {
-            val key = keys.next()
-            map[key] = this.get(key)
-        }
-        return map
-    }
 }

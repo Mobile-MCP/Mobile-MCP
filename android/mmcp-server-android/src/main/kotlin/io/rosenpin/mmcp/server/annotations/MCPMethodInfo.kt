@@ -3,6 +3,56 @@ package io.rosenpin.mmcp.server.annotations
 import java.lang.reflect.Method
 
 /**
+ * Converts a parameter value to match the target method parameter type.
+ * Handles common type conversions for MCP method invocation.
+ */
+fun convertParameterType(value: Any?, targetType: Class<*>): Any? {
+    if (value == null) return null
+    
+    return when {
+        targetType == value::class.java -> value
+        targetType == Double::class.java || targetType == Double::class.javaPrimitiveType -> {
+            when (value) {
+                is Number -> value.toDouble()
+                is String -> value.toDoubleOrNull()
+                else -> value
+            }
+        }
+        targetType == Int::class.java || targetType == Int::class.javaPrimitiveType -> {
+            when (value) {
+                is Number -> value.toInt()
+                is String -> value.toIntOrNull()
+                else -> value
+            }
+        }
+        targetType == String::class.java -> value.toString()
+        else -> value
+    }
+}
+
+/**
+ * Invokes a method with parameter mapping and type conversion.
+ * Used by both tools and prompts to handle MCP parameter binding.
+ */
+fun invokeMethodWithParameterMapping(
+    method: Method,
+    instance: Any,
+    arguments: Map<String, Any>?,
+    parameterMapping: Map<String, Int>
+): Any? {
+    val args = Array<Any?>(method.parameterCount) { null }
+    
+    arguments?.forEach { (paramName, value) ->
+        parameterMapping[paramName]?.let { index ->
+            val paramType = method.parameterTypes[index]
+            args[index] = convertParameterType(value, paramType)
+        }
+    }
+    
+    return method.invoke(instance, *args)
+}
+
+/**
  * Information about an annotated tool method discovered via reflection.
  * Contains all metadata needed to expose the method as an MCP tool.
  */
@@ -47,41 +97,7 @@ data class ToolMethodInfo(
      * @return The result of the tool invocation
      */
     fun invoke(instance: Any, arguments: Map<String, Any>?): Any? {
-        val args = Array<Any?>(method.parameterCount) { null }
-        
-        arguments?.forEach { (paramName, value) ->
-            parameterMapping[paramName]?.let { index ->
-                // Convert parameter type to match method signature
-                val paramType = method.parameterTypes[index]
-                args[index] = convertParameterType(value, paramType)
-            }
-        }
-        
-        return method.invoke(instance, *args)
-    }
-    
-    private fun convertParameterType(value: Any?, targetType: Class<*>): Any? {
-        if (value == null) return null
-        
-        return when {
-            targetType == value::class.java -> value
-            targetType == Double::class.java || targetType == Double::class.javaPrimitiveType -> {
-                when (value) {
-                    is Number -> value.toDouble()
-                    is String -> value.toDoubleOrNull()
-                    else -> value
-                }
-            }
-            targetType == Int::class.java || targetType == Int::class.javaPrimitiveType -> {
-                when (value) {
-                    is Number -> value.toInt()
-                    is String -> value.toIntOrNull()
-                    else -> value
-                }
-            }
-            targetType == String::class.java -> value.toString()
-            else -> value
-        }
+        return invokeMethodWithParameterMapping(method, instance, arguments, parameterMapping)
     }
 }
 
@@ -160,41 +176,7 @@ data class PromptMethodInfo(
      * @return The prompt result
      */
     fun invoke(instance: Any, arguments: Map<String, Any>?): Any? {
-        val args = Array<Any?>(method.parameterCount) { null }
-        
-        arguments?.forEach { (paramName, value) ->
-            parameterMapping[paramName]?.let { index ->
-                // Convert parameter type to match method signature
-                val paramType = method.parameterTypes[index]
-                args[index] = convertParameterType(value, paramType)
-            }
-        }
-        
-        return method.invoke(instance, *args)
-    }
-    
-    private fun convertParameterType(value: Any?, targetType: Class<*>): Any? {
-        if (value == null) return null
-        
-        return when {
-            targetType == value::class.java -> value
-            targetType == Double::class.java || targetType == Double::class.javaPrimitiveType -> {
-                when (value) {
-                    is Number -> value.toDouble()
-                    is String -> value.toDoubleOrNull()
-                    else -> value
-                }
-            }
-            targetType == Int::class.java || targetType == Int::class.javaPrimitiveType -> {
-                when (value) {
-                    is Number -> value.toInt()
-                    is String -> value.toIntOrNull()
-                    else -> value
-                }
-            }
-            targetType == String::class.java -> value.toString()
-            else -> value
-        }
+        return invokeMethodWithParameterMapping(method, instance, arguments, parameterMapping)
     }
 }
 
