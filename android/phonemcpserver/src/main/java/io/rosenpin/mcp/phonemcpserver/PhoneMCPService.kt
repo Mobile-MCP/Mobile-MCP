@@ -55,7 +55,7 @@ class PhoneMCPService : ContextAwareMCPService() {
                 ContactsContract.CommonDataKinds.Phone.CONTACT_ID
             ),
             null, null,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC LIMIT $limit"
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC"
         )
         
         cursor?.use {
@@ -63,13 +63,15 @@ class PhoneMCPService : ContextAwareMCPService() {
             val numberIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
             val idIndex = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
             
-            while (it.moveToNext()) {
+            var count = 0
+            while (it.moveToNext() && count < limit) {
                 val contact = mapOf(
                     "id" to it.getString(idIndex),
                     "name" to it.getString(nameIndex),
                     "phoneNumber" to it.getString(numberIndex)
                 )
                 contacts.add(contact)
+                count++
             }
         }
         
@@ -202,7 +204,7 @@ class PhoneMCPService : ContextAwareMCPService() {
             ),
             selection,
             null,
-            "${CallLog.Calls.DATE} DESC LIMIT $limit"
+            "${CallLog.Calls.DATE} DESC"
         )
         
         val calls = mutableListOf<String>()
@@ -212,7 +214,8 @@ class PhoneMCPService : ContextAwareMCPService() {
             val durationIndex = it.getColumnIndex(CallLog.Calls.DURATION)
             val typeIndex = it.getColumnIndex(CallLog.Calls.TYPE)
             
-            while (it.moveToNext()) {
+            var count = 0
+            while (it.moveToNext() && count < limit) {
                 val number = it.getString(numberIndex) ?: "Unknown"
                 val date = Date(it.getLong(dateIndex))
                 val duration = it.getInt(durationIndex)
@@ -224,6 +227,7 @@ class PhoneMCPService : ContextAwareMCPService() {
                 }
                 
                 calls.add("$type call from $number on ${dateFormat.format(date)} (${duration}s)")
+                count++
             }
         }
         
