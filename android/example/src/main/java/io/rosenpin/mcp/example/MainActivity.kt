@@ -19,6 +19,9 @@ import androidx.lifecycle.lifecycleScope
 import io.rosenpin.mcp.example.ui.theme.MMCPExampleTheme
 import io.rosenpin.mmcp.client.McpClient
 import kotlinx.coroutines.launch
+import android.util.Log
+
+private const val TAG = "MCPExampleApp"
 
 class MainActivity : ComponentActivity() {
     
@@ -107,6 +110,7 @@ fun MCPClientTestScreen(
                                     val servers = mcpClient.discoveredServers.value
                                     discoveredServers = servers.map { it.packageName }
                                     connectionStatus = "Discovery completed - Found ${servers.size} servers"
+                                    Log.i(TAG, "Discovery completed - Found servers: ${discoveredServers.joinToString(", ")}")
                                 } else {
                                     connectionStatus = "Discovery failed: ${result.exceptionOrNull()?.message}"
                                 }
@@ -158,71 +162,84 @@ fun MCPClientTestScreen(
             }
         }
         
-        // Test Tools Section
-        if (discoveredServers.contains("io.rosenpin.mcp.phonemcpserver")) {
+        // Dynamic Server Testing Section
+        if (discoveredServers.isNotEmpty()) {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Phone MCP Server Tests",
+                        text = "Dynamic MCP Server Testing",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     
-                    // Connect button
-                    Button(
-                        onClick = {
-                            lifecycleScope.launch {
-                                try {
-                                    val result = mcpClient.connectToServer("io.rosenpin.mcp.phonemcpserver")
-                                    if (result.isSuccess) {
-                                        connectionStatus = "Connected to phonemcpserver"
-                                        testResults = testResults + "Connection: SUCCESS - Connected to server"
-                                    } else {
-                                        connectionStatus = "Connection failed: ${result.exceptionOrNull()?.message}"
-                                        testResults = testResults + "Connection: FAILED - ${result.exceptionOrNull()?.message}"
-                                    }
-                                } catch (e: Exception) {
-                                    connectionStatus = "Connection error: ${e.message}"
-                                    testResults = testResults + "Connection: ERROR - ${e.message}"
-                                }
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Connect to Phone Server")
-                    }
-                    
-                    val testButtons = listOf(
-                        "Test Get Contacts" to "get_contacts",
-                        "Test Search Contact" to "get_contact_by_name",
-                        "Test Call History" to "get_call_history",
-                        "Test Contact Resource" to "contact_resource"
-                    )
-                    
-                    testButtons.forEach { (buttonText, testName) ->
-                        Button(
-                            onClick = {
-                                lifecycleScope.launch {
-                                    try {
-                                        val result = when (testName) {
-                                            "get_contacts" -> testGetContacts(mcpClient)
-                                            "get_contact_by_name" -> testSearchContact(mcpClient)
-                                            "get_call_history" -> testCallHistory(mcpClient)
-                                            "contact_resource" -> testContactResource(mcpClient)
-                                            else -> "Unknown test"
-                                        }
-                                        testResults = testResults + "$testName: $result"
-                                    } catch (e: Exception) {
-                                        testResults = testResults + "$testName: ERROR - ${e.message}"
-                                    }
-                                }
-                            },
+                    discoveredServers.forEach { serverPackage ->
+                        val serverInfo = mcpClient.discoveredServers.value.find { it.packageName == serverPackage }
+                        // Use the server's package name as display name for now
+                        // serverInfo?.serverInfo might be null if not yet connected
+                        val serverName = serverPackage.substringAfterLast('.')
+                        
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(buttonText)
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = serverName,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                
+                                Text(
+                                    text = "Package: $serverPackage",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                
+                                // Connect/Test buttons for this server
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            lifecycleScope.launch {
+                                                testServerConnection(mcpClient, serverPackage) { result ->
+                                                    Log.i(TAG, "TEST RESULT: $result")
+                                                    testResults = testResults + result
+                                                    connectionStatus = if (result.contains("SUCCESS")) {
+                                                        "Connected to $serverName"
+                                                    } else {
+                                                        "Connection failed for $serverName"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Connect")
+                                    }
+                                    
+                                    Button(
+                                        onClick = {
+                                            lifecycleScope.launch {
+                                                testServerCapabilities(mcpClient, serverPackage) { result ->
+                                                    Log.i(TAG, "TEST RESULT: $result")
+                                                    testResults = testResults + result
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Test All")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -275,107 +292,174 @@ fun MCPClientTestScreen(
     }
 }
 
-// Test Functions
-private suspend fun testGetContacts(mcpClient: McpClient): String {
-    val packageName = "io.rosenpin.mcp.phonemcpserver"
-    return try {
-        // First ensure we're connected
+// Dynamic Test Functions
+private suspend fun testServerConnection(
+    mcpClient: McpClient, 
+    packageName: String,
+    onResult: (String) -> Unit
+) {
+    try {
+        Log.d(TAG, "Testing connection to server: $packageName")
         val connectionResult = mcpClient.connectToServer(packageName)
-        if (connectionResult.isFailure) {
-            return "FAILED: Connection failed - ${connectionResult.exceptionOrNull()?.message}"
-        }
-        
-        // Execute the get_contacts tool
-        val result = mcpClient.executeTool(
-            packageName = packageName,
-            toolName = "get_contacts",
-            parameters = mapOf("limit" to 10)
-        )
-        
-        if (result.isSuccess) {
-            "SUCCESS: ${result.getOrNull()}"
+        if (connectionResult.isSuccess) {
+            val message = "Connection to $packageName: SUCCESS"
+            Log.i(TAG, message)
+            onResult(message)
         } else {
-            "FAILED: ${result.exceptionOrNull()?.message}"
+            val message = "Connection to $packageName: FAILED - ${connectionResult.exceptionOrNull()?.message}"
+            Log.e(TAG, message)
+            onResult(message)
         }
     } catch (e: Exception) {
-        "FAILED: ${e.message}"
+        val message = "Connection to $packageName: ERROR - ${e.message}"
+        Log.e(TAG, message, e)
+        onResult(message)
     }
 }
 
-private suspend fun testSearchContact(mcpClient: McpClient): String {
-    val packageName = "io.rosenpin.mcp.phonemcpserver"
-    return try {
-        // Ensure we're connected
+private suspend fun testServerCapabilities(
+    mcpClient: McpClient,
+    packageName: String,
+    onResult: (String) -> Unit
+) {
+    try {
+        Log.d(TAG, "Testing capabilities for server: $packageName")
+        
+        // Ensure we're connected first
         if (!mcpClient.isConnectedTo(packageName)) {
-            mcpClient.connectToServer(packageName)
+            Log.d(TAG, "Not connected to $packageName, connecting first...")
+            val connectionResult = mcpClient.connectToServer(packageName)
+            if (connectionResult.isFailure) {
+                val message = "$packageName: Connection failed before testing"
+                Log.e(TAG, message)
+                onResult(message)
+                return
+            }
         }
         
-        // Execute the get_contact_by_name tool
-        val result = mcpClient.executeTool(
-            packageName = packageName,
-            toolName = "get_contact_by_name",
-            parameters = mapOf("name" to "John")
-        )
+        // Test tools if available
+        val connection = mcpClient.getConnection(packageName)
+        Log.d(TAG, "Connection info - hasTools: ${connection?.hasTools}, hasResources: ${connection?.hasResources}, hasPrompts: ${connection?.hasPrompts}")
         
-        if (result.isSuccess) {
-            "SUCCESS: ${result.getOrNull()}"
-        } else {
-            "FAILED: ${result.exceptionOrNull()?.message}"
+        if (connection?.hasTools == true) {
+            Log.d(TAG, "Testing tools for $packageName...")
+            val toolsResult = mcpClient.listTools(packageName)
+            if (toolsResult.isSuccess) {
+                val tools = toolsResult.getOrNull() ?: emptyList()
+                val message = "$packageName Tools: Found ${tools.size} tools - ${tools.joinToString(", ")}"
+                Log.i(TAG, message)
+                onResult(message)
+                
+                // Test the first tool with minimal parameters
+                if (tools.isNotEmpty()) {
+                    val firstTool = tools.first()
+                    Log.d(TAG, "Testing first tool: $firstTool")
+                    val testResult = mcpClient.executeTool(
+                        packageName = packageName,
+                        toolName = firstTool,
+                        parameters = emptyMap() // Start with no parameters
+                    )
+                    
+                    if (testResult.isSuccess) {
+                        val successMsg = "$packageName Tool '$firstTool': SUCCESS - ${testResult.getOrNull()}"
+                        Log.i(TAG, successMsg)
+                        onResult(successMsg)
+                    } else {
+                        val errorMsg = "$packageName Tool '$firstTool': FAILED - ${testResult.exceptionOrNull()?.message}"
+                        Log.e(TAG, errorMsg)
+                        onResult(errorMsg)
+                    }
+                }
+            } else {
+                val errorMsg = "$packageName Tools: Failed to list - ${toolsResult.exceptionOrNull()?.message}"
+                Log.e(TAG, errorMsg)
+                onResult(errorMsg)
+            }
         }
+        
+        // Test resources if available
+        if (connection?.hasResources == true) {
+            Log.d(TAG, "Testing resources for $packageName...")
+            val resourcesResult = mcpClient.listResources(packageName)
+            if (resourcesResult.isSuccess) {
+                val resources = resourcesResult.getOrNull() ?: emptyList()
+                val message = "$packageName Resources: Found ${resources.size} resources - ${resources.joinToString(", ")}"
+                Log.i(TAG, message)
+                onResult(message)
+                
+                // Test the first resource
+                if (resources.isNotEmpty()) {
+                    val firstResource = resources.first()
+                    Log.d(TAG, "Testing first resource: $firstResource")
+                    val testResult = mcpClient.readResource(
+                        packageName = packageName,
+                        resourceUri = firstResource
+                    )
+                    
+                    if (testResult.isSuccess) {
+                        val successMsg = "$packageName Resource '$firstResource': SUCCESS - ${testResult.getOrNull()}"
+                        Log.i(TAG, successMsg)
+                        onResult(successMsg)
+                    } else {
+                        val errorMsg = "$packageName Resource '$firstResource': FAILED - ${testResult.exceptionOrNull()?.message}"
+                        Log.e(TAG, errorMsg)
+                        onResult(errorMsg)
+                    }
+                }
+            } else {
+                val errorMsg = "$packageName Resources: Failed to list - ${resourcesResult.exceptionOrNull()?.message}"
+                Log.e(TAG, errorMsg)
+                onResult(errorMsg)
+            }
+        }
+        
+        // Test prompts if available
+        if (connection?.hasPrompts == true) {
+            Log.d(TAG, "Testing prompts for $packageName...")
+            val promptsResult = mcpClient.listPrompts(packageName)
+            if (promptsResult.isSuccess) {
+                val prompts = promptsResult.getOrNull() ?: emptyList()
+                val message = "$packageName Prompts: Found ${prompts.size} prompts - ${prompts.joinToString(", ")}"
+                Log.i(TAG, message)
+                onResult(message)
+                
+                // Test the first prompt
+                if (prompts.isNotEmpty()) {
+                    val firstPrompt = prompts.first()
+                    Log.d(TAG, "Testing first prompt: $firstPrompt")
+                    val testResult = mcpClient.getPrompt(
+                        packageName = packageName,
+                        promptName = firstPrompt,
+                        parameters = emptyMap()
+                    )
+                    
+                    if (testResult.isSuccess) {
+                        val successMsg = "$packageName Prompt '$firstPrompt': SUCCESS - ${testResult.getOrNull()}"
+                        Log.i(TAG, successMsg)
+                        onResult(successMsg)
+                    } else {
+                        val errorMsg = "$packageName Prompt '$firstPrompt': FAILED - ${testResult.exceptionOrNull()?.message}"
+                        Log.e(TAG, errorMsg)
+                        onResult(errorMsg)
+                    }
+                }
+            } else {
+                val errorMsg = "$packageName Prompts: Failed to list - ${promptsResult.exceptionOrNull()?.message}"
+                Log.e(TAG, errorMsg)
+                onResult(errorMsg)
+            }
+        }
+        
+        if (connection?.hasTools != true && connection?.hasResources != true && connection?.hasPrompts != true) {
+            val message = "$packageName: No capabilities available"
+            Log.w(TAG, message)
+            onResult(message)
+        }
+        
     } catch (e: Exception) {
-        "FAILED: ${e.message}"
-    }
-}
-
-private suspend fun testCallHistory(mcpClient: McpClient): String {
-    val packageName = "io.rosenpin.mcp.phonemcpserver"
-    return try {
-        // Ensure we're connected
-        if (!mcpClient.isConnectedTo(packageName)) {
-            mcpClient.connectToServer(packageName)
-        }
-        
-        // Execute the get_call_history tool
-        val result = mcpClient.executeTool(
-            packageName = packageName,
-            toolName = "get_call_history",
-            parameters = mapOf(
-                "limit" to 5,
-                "callType" to "all"
-            )
-        )
-        
-        if (result.isSuccess) {
-            "SUCCESS: ${result.getOrNull()}"
-        } else {
-            "FAILED: ${result.exceptionOrNull()?.message}"
-        }
-    } catch (e: Exception) {
-        "FAILED: ${e.message}"
-    }
-}
-
-private suspend fun testContactResource(mcpClient: McpClient): String {
-    val packageName = "io.rosenpin.mcp.phonemcpserver"
-    return try {
-        // Ensure we're connected
-        if (!mcpClient.isConnectedTo(packageName)) {
-            mcpClient.connectToServer(packageName)
-        }
-        
-        // Read a contact resource
-        val result = mcpClient.readResource(
-            packageName = packageName,
-            resourceUri = "contact://1"
-        )
-        
-        if (result.isSuccess) {
-            "SUCCESS: ${result.getOrNull()}"
-        } else {
-            "FAILED: ${result.exceptionOrNull()?.message}"
-        }
-    } catch (e: Exception) {
-        "FAILED: ${e.message}"
+        val errorMsg = "$packageName Test: ERROR - ${e.message}"
+        Log.e(TAG, errorMsg, e)
+        onResult(errorMsg)
     }
 }
 

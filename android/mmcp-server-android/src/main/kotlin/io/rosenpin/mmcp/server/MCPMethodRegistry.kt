@@ -45,7 +45,7 @@ class MCPMethodRegistry(
         callback: IMcpServiceCallback?,
         scope: CoroutineScope
     ): String {
-        val tool = serverInfo.tools.find { it.name == toolName }
+        val tool = serverInfo.tools.find { it.id == toolName }
             ?: return createErrorResponse("Tool '$toolName' not found")
         
         return try {
@@ -210,7 +210,7 @@ class MCPMethodRegistry(
         callback: IMcpServiceCallback?,
         scope: CoroutineScope
     ): String {
-        val prompt = serverInfo.prompts.find { it.name == promptName }
+        val prompt = serverInfo.prompts.find { it.id == promptName }
             ?: return createErrorResponse("Prompt '$promptName' not found")
         
         return try {

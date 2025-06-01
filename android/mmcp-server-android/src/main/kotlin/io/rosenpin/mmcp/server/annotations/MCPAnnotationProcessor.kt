@@ -264,10 +264,10 @@ class MCPAnnotationProcessor {
     }
     
     /**
-     * Find a specific tool by name.
+     * Find a specific tool by ID.
      */
-    fun findTool(serverInfo: ServerInfo, toolName: String): ToolMethodInfo? {
-        return serverInfo.tools.find { it.name == toolName }
+    fun findTool(serverInfo: ServerInfo, toolId: String): ToolMethodInfo? {
+        return serverInfo.tools.find { it.id == toolId }
     }
     
     /**
@@ -278,10 +278,10 @@ class MCPAnnotationProcessor {
     }
     
     /**
-     * Find a specific prompt by name.
+     * Find a specific prompt by ID.
      */
-    fun findPrompt(serverInfo: ServerInfo, promptName: String): PromptMethodInfo? {
-        return serverInfo.prompts.find { it.name == promptName }
+    fun findPrompt(serverInfo: ServerInfo, promptId: String): PromptMethodInfo? {
+        return serverInfo.prompts.find { it.id == promptId }
     }
     
     /**

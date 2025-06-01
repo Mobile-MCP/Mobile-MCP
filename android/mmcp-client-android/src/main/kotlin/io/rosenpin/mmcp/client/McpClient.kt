@@ -355,8 +355,19 @@ class McpClient(
     // Helper methods (TODO: Implement proper JSON handling)
     
     private fun mapToJson(map: Map<String, Any>): String {
-        // Simplified JSON conversion - implement proper JSON handling
-        return "{}"
+        // Simple JSON serialization for parameter passing
+        if (map.isEmpty()) return "{}"
+        
+        val entries = map.entries.joinToString(",") { (key, value) ->
+            when (value) {
+                is String -> "\"$key\":\"$value\""
+                is Number -> "\"$key\":$value"
+                is Boolean -> "\"$key\":$value"
+                null -> "\"$key\":null"
+                else -> "\"$key\":\"$value\""
+            }
+        }
+        return "{$entries}"
     }
     
     private fun parseToolList(json: String): List<String> {
