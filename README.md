@@ -21,7 +21,7 @@ A **two-sided framework** that bridges this gap:
 
 | Platform | Compile-time Integration | Runtime Discovery | Status |
 |----------|-------------------------|-------------------|---------|
-| **Android** | 🚧 `@MCPServer` annotations | 🚧 Intent-based discovery | **Active Development** |
+| **Android** | ✅ `@MCPServer` annotations | ✅ Intent-based discovery | **Active Development** |
 | **iOS** | 🚧 `@MCPServer` annotations | ❌ Same-developer only | **Planned** |
 | **Remote** | 🚧 HTTP/WebSocket | 🚧 URL-based | **Planned** |
 
@@ -31,12 +31,44 @@ A **two-sided framework** that bridges this gap:
 
 ```kotlin
 // LLM Apps: Add mmcp-client-android dependency
-val mcpClient = MobileMCPClient()
+val mcpClient = McpClient(context)
 mcpClient.startHttpServer() // Discover and access all local tools
 
 // App Developers: Add mmcp-server-android dependency
-@MCPServer class MyAppTools {
-    @MCPTool suspend fun search(@MCPParam query: String) = myDatabase.search(query)
+@MCPServer(
+    id = "io.rosenpin.mcp.phonemcpserver",
+    name = "Phone & Contacts MCP Server",
+    description = "Provides access to device contacts and phone calling functionality",
+    version = "1.0.0"
+)
+class PhoneMCPService : MCPServiceBase() {
+       @MCPTool(
+        id = "make_call",
+        name = "Make Phone Call",
+        description = "Initiate a phone call to the specified number",
+        parameters = """
+        {
+            "type": "object",
+            "properties": {
+                "phoneNumber": {
+                    "type": "string",
+                    "description": "Phone number to call"
+                }
+            },
+            "required": ["phoneNumber"]
+        }
+        """
+    )
+    fun makeCall(@MCPParam("phoneNumber") phoneNumber: String): String {
+        try {
+            ...
+            telecomManager?.placeCall(Uri.fromParts("tel", phoneNumber, null), null)
+            return "Call initiated to $phoneNumber"
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to make call", e)
+            return "Failed to make call: ${e.message}"
+        }
+    }
 }
 ```
 
@@ -86,12 +118,23 @@ mcpClient.startHttpServer() // Discover and access all local tools
 
 ## Development Status
 
-🚧 **Early Development** - Core architecture designed, implementation in progress
+### ✅ What's Completed
 
-- ✅ Research and architecture complete
-- ✅ Android project structure established  
-- 🔄 HTTP client library implementation
-- ⏳ Annotation processor and code generation
+- **Research and Architecture**: Complete analysis of mobile LLM landscape and MCP requirements
+- **Android Client Library**: HTTP server (port 11434), AIDL discovery, direct API  
+- **Android Server Framework**: Base service, annotations, method registry
+- **Working Examples**: Client demo app, Phone MCP server
+- **AIDL Infrastructure**: Full protocol implementation with proper marshalling
+
+### 🚧 What's In Progress
+
+- **LLM Integration** ([PR #12](https://github.com/Mobile-MCP/Mobile-MCP/pull/12)): Embedding locally-running LLM with MCP support
+
+### ⏳ What's Next
+
+- Gradle plugin for automatic code generation
+- iOS implementation
+- Remote MCP support using SSE proxying
 
 ## Contributing
 

@@ -11,15 +11,12 @@ This guide covers everything you need to integrate MCP capabilities in your Andr
 ```
 android/
 ├── mmcp-client-android/       # Client library for LLM apps
-│   ├── src/main/java/         # HTTP server, discovery, direct API
-│   ├── src/test/java/         # Unit tests
-│   └── src/androidTest/java/  # Integration tests
+│   ├── src/main/kotlin/       # HTTP server, discovery, direct API
 ├── mmcp-server-android/       # Server framework for 3rd party apps
-│   ├── src/main/java/         # Annotations, AIDL generation, runtime
-│   ├── annotation-processor/  # KAPT processor for @MCPServer
-│   └── gradle-plugin/         # Build integration
-├── app/                       # Example Android app
-└── shared/                    # Common utilities (if needed)
+│   ├── src/main/kotlin/       # Annotations, base service, registry
+│   └── src/androidTest/       # Integration tests
+├── example/                   # Example client app demonstrating discovery and mcp tool usage
+├── phonemcpserver/            # Example MCP server app exposing phone features
 ```
 
 ## Two Library Architecture
@@ -213,8 +210,9 @@ class FileManagerMCPServer {
 #### 3. Build Your App
 
 The build plugin auto-generates:
+
 - **AIDL interface definitions** for your server
-- **Android Service implementation** that handles MCP protocol 
+- **Android Service implementation** that handles MCP protocol
 - **Manifest entries** for service discovery (`io.mmcp.action.SERVER`)
 - **Permission declarations** for any sensitive operations
 
@@ -242,6 +240,7 @@ class MainActivity : ComponentActivity() {
 #### 5. Advanced Features
 
 **Multiple Resource Schemes:**
+
 ```kotlin
 @MCPServer(id = "com.myapp.media", name = "Media Manager")
 class MediaMCPServer {
@@ -255,6 +254,7 @@ class MediaMCPServer {
 ```
 
 **Permission-Based Tools:**
+
 ```kotlin
 @MCPTool(
     name = "read_contacts",
@@ -265,6 +265,7 @@ suspend fun readContacts(): List<Contact> { ... }
 ```
 
 **Context-Aware Tools:**
+
 ```kotlin
 @MCPServer(id = "com.myapp.location", name = "Location Services")
 class LocationMCPServer(private val context: Context) {
@@ -301,35 +302,61 @@ cd android/
 ./gradlew :mmcp-client-android:connectedAndroidTest :mmcp-server-android:connectedAndroidTest
 ```
 
-### Example App
+### Example Apps
 
-The `app/` module contains an example implementation:
+The project includes two example applications:
+
+#### Client Example (`example/`)
+
+A full-featured client app demonstrating:
+
+- MCP server discovery
+- Dynamic UI generation for discovered tools
+- Tool execution with parameter input
+- Real-time connection status
 
 ```bash
-./gradlew :app:installDebug
+./gradlew :example:installDebug
+```
+
+#### Phone MCP Server (`phonemcpserver/`)
+
+An example MCP server exposing phone features:
+
+- Contact access tools
+- Call history access
+- SMS tools (with proper permissions)
+- Demonstrates the `@MCPServer` annotation system
+
+```bash
+./gradlew :phonemcpserver:installDebug
 ```
 
 ## Architecture Details
 
 ### HTTP Server Implementation
+
 - Uses NanoHTTPD for lightweight HTTP serving
 - Runs on port 11434 (Ollama-compatible)
 - Lifecycle tied to LLM app activity
 - Endpoints follow MCP specification
 
 ### AIDL Discovery
+
 - Intent action: `io.mmcp.action.SERVER`
 - Categories for capability grouping
 - Metadata for server information
 - Package visibility queries (Android 11+)
 
 ### Security Model
+
 - Signature-level permissions for trusted ecosystems
 - Runtime permissions for sensitive operations
 - Caller verification via Binder.getCallingUid()
 - Permission scoping per tool/resource
 
 ### Threading Model
+
 - All operations async with Kotlin coroutines
 - Background thread pool for heavy operations
 - Main thread for UI updates only
@@ -370,12 +397,15 @@ class MobileMCPClient(context: Context) {
 ## Debugging
 
 ### Logging
+
 Enable debug logging:
+
 ```kotlin
 MobileMCPClient.enableDebugLogging(true)
 ```
 
 ### ADB Commands
+
 ```bash
 # List MCP services
 adb shell dumpsys package queries | grep mmcp
@@ -385,6 +415,7 @@ adb shell dumpsys activity services | grep MCP
 ```
 
 ### Testing Tools
+
 - MCP Server validator (planned)
 - HTTP endpoint testing utilities
 - AIDL connection debugging
@@ -394,6 +425,7 @@ adb shell dumpsys activity services | grep MCP
 See the [main contributing guide](../README.md#contributing) for general information.
 
 **Android-specific guidelines:**
+
 - Follow Android Kotlin style guide
 - Use ktlint for formatting: `./gradlew ktlintFormat`
 - Document public APIs with KDoc
@@ -405,29 +437,62 @@ See the [main contributing guide](../README.md#contributing) for general informa
 ### Common Issues
 
 **Server Discovery Fails**
+
 - Check package visibility queries in manifest
 - Verify Intent filters are correctly declared
 - Ensure target app is installed and MCP service enabled
 
 **HTTP Server Won't Start**
+
 - Check port availability (11434)
 - Verify network permissions
 - Ensure not running on main thread
 
 **AIDL Binding Fails**
+
 - Check service is exported and running
 - Verify permissions are granted
 - Test with `adb shell dumpsys activity services`
 
-## Roadmap
+## Current Progress
 
-- ✅ Core architecture and HTTP server
-- 🔄 AIDL discovery implementation
-- ⏳ Annotation processor and code generation
-- ⏳ Gradle plugin for build integration
-- ⏳ Advanced security and permission management
-- ⏳ Performance optimization and caching
-- ⏳ Developer tools and debugging utilities
+### What's Completed ✅
+
+- **Core Client Library (`mmcp-client-android`)**
+  - HTTP server running on port 11434 (Ollama-compatible)
+  - AIDL-based service discovery and connection management
+  - Direct API for in-process tool calling
+  - Full MCP protocol compliance with JSON-RPC 2.0
+  
+- **Core Server Framework (`mmcp-server-android`)**
+  - Base service class (`MCPServiceBase`) with full AIDL implementation
+  - Annotation system (`@MCPServer`, `@MCPTool`, `@MCPResource`, `@MCPPrompt`)
+  - Annotation processor for metadata extraction
+  - Method registry for dynamic invocation
+  
+- **Working Examples**
+  - Client example app with full discovery and tool execution
+  - Phone MCP server demonstrating real-world integration
+  
+- **AIDL Infrastructure**
+  - Complete AIDL interfaces for all MCP capabilities
+  - Service discovery via Android Intent system
+  - Proper marshalling/unmarshalling of data
+
+### What's In Progress 🚧
+
+- **LLM Integration** ([PR #12](https://github.com/Mobile-MCP/Mobile-MCP/pull/12))
+  - Embedding locally-running LLM with MCP support
+  - Integration with our HTTP server infrastructure
+  - Tool calling orchestration between LLM and MCP servers
+
+### What's Next ⏳
+
+- Gradle plugin for automatic manifest generation
+- Advanced permission management system
+- Performance optimizations and caching
+- iOS implementation
+- Developer tools and debugging utilities
 
 ---
 
