@@ -54,20 +54,28 @@ dependencies {
 }
 ```
 
-#### 2. Add Permissions
+#### 2. Add Intents for discovery to Manifest
 
 ```xml
 <!-- AndroidManifest.xml -->
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" 
-    tools:ignore="QueryAllPackagesPermission" />
-
-<!-- Package visibility for MCP servers (Android 11+) -->
-<queries>
-    <intent>
-        <action android:name="io.mmcp.action.SERVER" />
-    </intent>
-</queries>
+  <!-- Package visibility for MCP server discovery (Android 11+) -->
+    <queries>
+        <intent>
+            <action android:name="io.rosenpin.mmcp.action.MCP_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="io.rosenpin.mmcp.action.MCP_TOOL_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="io.rosenpin.mmcp.action.MCP_RESOURCE_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="io.rosenpin.mmcp.action.MCP_PROMPT_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="io.rosenpin.mmcp.action.MCP_DISCOVERY_SERVICE" />
+        </intent>
+    </queries>
 ```
 
 #### 3. Implement MCP Client
@@ -169,7 +177,7 @@ dependencies {
     description = "Provides file system operations",
     version = "1.0.0"
 )
-class FileManagerMCPServer {
+class FileManagerMCPServer: ContextAwareMCPService() {
     
     @MCPTool(
         name = "list_files",
@@ -205,7 +213,23 @@ class FileManagerMCPServer {
 }
 ```
 
-#### 3. Build Your App
+#### 4. Register the service in your Manifest
+  ```
+<!-- MCP Service -->
+        <service
+            android:name=".PhoneMCPService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="io.rosenpin.mmcp.action.MCP_SERVICE" />
+                <action android:name="io.rosenpin.mmcp.action.MCP_TOOL_SERVICE" />
+                <action android:name="io.rosenpin.mmcp.action.MCP_RESOURCE_SERVICE" />
+                <action android:name="io.rosenpin.mmcp.action.MCP_PROMPT_SERVICE" />
+                <action android:name="io.rosenpin.mmcp.action.MCP_DISCOVERY_SERVICE" />
+            </intent-filter>
+        </service>
+```
+
+#### 4. Build Your App
 
 The build plugin auto-generates:
 
@@ -214,7 +238,7 @@ The build plugin auto-generates:
 - **Manifest entries** for service discovery (`io.mmcp.action.SERVER`)
 - **Permission declarations** for any sensitive operations
 
-#### 4. Test Your MCP Server
+#### 5. Test Your MCP Server
 
 ```kotlin
 // Your app can test its own MCP server locally
@@ -235,7 +259,7 @@ class MainActivity : ComponentActivity() {
 }
 ```
 
-#### 5. Advanced Features
+#### 6. Advanced Features
 
 **Multiple Resource Schemes:**
 
