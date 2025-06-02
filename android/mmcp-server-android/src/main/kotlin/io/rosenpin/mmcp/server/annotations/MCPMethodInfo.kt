@@ -7,22 +7,61 @@ import java.lang.reflect.Method
  * Handles common type conversions for MCP method invocation.
  */
 fun convertParameterType(value: Any?, targetType: Class<*>): Any? {
-    if (value == null) return null
+    // Handle null values for primitive types by providing defaults
+    if (value == null) {
+        return when (targetType) {
+            Int::class.javaPrimitiveType -> 0
+            Long::class.javaPrimitiveType -> 0L
+            Float::class.javaPrimitiveType -> 0f
+            Double::class.javaPrimitiveType -> 0.0
+            Boolean::class.javaPrimitiveType -> false
+            Byte::class.javaPrimitiveType -> 0.toByte()
+            Short::class.javaPrimitiveType -> 0.toShort()
+            Char::class.javaPrimitiveType -> '\u0000'
+            else -> null // Non-primitives can be null
+        }
+    }
     
     return when {
         targetType == value::class.java -> value
         targetType == Double::class.java || targetType == Double::class.javaPrimitiveType -> {
             when (value) {
                 is Number -> value.toDouble()
-                is String -> value.toDoubleOrNull()
+                is String -> value.toDoubleOrNull() ?: 0.0
                 else -> value
             }
         }
         targetType == Int::class.java || targetType == Int::class.javaPrimitiveType -> {
             when (value) {
+                is Double -> value.toInt() // Gson parses all numbers as Double
+                is Float -> value.toInt()
                 is Number -> value.toInt()
-                is String -> value.toIntOrNull()
+                is String -> value.toIntOrNull() ?: 0
                 else -> value
+            }
+        }
+        targetType == Long::class.java || targetType == Long::class.javaPrimitiveType -> {
+            when (value) {
+                is Double -> value.toLong() // Gson parses all numbers as Double
+                is Float -> value.toLong()
+                is Number -> value.toLong()
+                is String -> value.toLongOrNull() ?: 0L
+                else -> value
+            }
+        }
+        targetType == Float::class.java || targetType == Float::class.javaPrimitiveType -> {
+            when (value) {
+                is Double -> value.toFloat() // Gson parses all numbers as Double
+                is Number -> value.toFloat()
+                is String -> value.toFloatOrNull() ?: 0f
+                else -> value
+            }
+        }
+        targetType == Boolean::class.java || targetType == Boolean::class.javaPrimitiveType -> {
+            when (value) {
+                is Boolean -> value
+                is String -> value.toBoolean()
+                else -> false
             }
         }
         targetType == String::class.java -> value.toString()

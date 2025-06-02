@@ -79,24 +79,40 @@ class McpServerDiscovery(
     suspend fun startDiscovery(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             _isScanning.value = true
-            Log.d(TAG, "Starting MCP server discovery...")
+            Log.i(TAG, "🔍 Starting MCP server discovery...")
             
             val discoveredServers = scanForMcpServers()
-            Log.d(TAG, "Found ${discoveredServers.size} potential MCP servers")
+            Log.i(TAG, "📋 Initial scan found ${discoveredServers.size} potential MCP servers")
+            
+            if (discoveredServers.isEmpty()) {
+                Log.w(TAG, "⚠️ No MCP servers found during initial scan. Check:")
+                Log.w(TAG, "   1. Server app is installed")
+                Log.w(TAG, "   2. Server manifest has correct intent filters")
+                Log.w(TAG, "   3. Client manifest has <queries> element for package visibility")
+                _discoveredServers.value = emptyList()
+                return@withContext Result.success(Unit)
+            }
             
             // Query each server for detailed information
+            Log.d(TAG, "🔗 Connecting to servers to query details...")
             val serversWithDetails = discoveredServers.map { server ->
                 scope.async {
+                    Log.d(TAG, "Querying details for: ${server.packageName}")
                     queryServerDetails(server)
                 }
             }.awaitAll()
             
-            _discoveredServers.value = serversWithDetails.filterNotNull()
-            Log.d(TAG, "Successfully queried ${_discoveredServers.value.size} MCP servers")
+            val finalServers = serversWithDetails.filterNotNull()
+            _discoveredServers.value = finalServers
+            
+            Log.i(TAG, "✅ Discovery complete: ${finalServers.size} MCP servers ready")
+            finalServers.forEach { server ->
+                Log.i(TAG, "   📱 ${server.packageName} (${server.connectionStatus})")
+            }
             
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Error during server discovery", e)
+            Log.e(TAG, "💥 Error during server discovery", e)
             Result.failure(e)
         } finally {
             _isScanning.value = false
@@ -118,15 +134,22 @@ class McpServerDiscovery(
             McpConstants.ACTION_MCP_DISCOVERY_SERVICE
         )
         
+        Log.d(TAG, "Starting scan for MCP services with ${serviceActions.size} action types")
+        
         serviceActions.forEach { action ->
+            Log.d(TAG, "Scanning for action: $action")
             val intent = Intent(action)
             val resolveInfos = packageManager.queryIntentServices(
                 intent,
                 PackageManager.GET_META_DATA or PackageManager.GET_RESOLVED_FILTER
             )
             
+            Log.d(TAG, "Found ${resolveInfos.size} services for action: $action")
+            
             resolveInfos.forEach { resolveInfo ->
                 val serviceInfo = resolveInfo.serviceInfo
+                Log.d(TAG, "Processing service: ${serviceInfo?.packageName}/${serviceInfo?.name}, exported: ${serviceInfo?.exported}")
+                
                 if (serviceInfo != null && serviceInfo.exported) {
                     val server = DiscoveredServer(
                         packageName = serviceInfo.packageName,
@@ -136,10 +159,19 @@ class McpServerDiscovery(
                     // Avoid duplicates from the same package
                     if (servers.none { it.packageName == server.packageName }) {
                         servers.add(server)
-                        Log.d(TAG, "Found MCP service: ${serviceInfo.packageName}/${serviceInfo.name}")
+                        Log.i(TAG, "✅ Added MCP service: ${serviceInfo.packageName}/${serviceInfo.name}")
+                    } else {
+                        Log.d(TAG, "⚠️ Duplicate service found, skipping: ${serviceInfo.packageName}")
                     }
+                } else {
+                    Log.w(TAG, "❌ Service not exported or null: ${serviceInfo?.packageName}/${serviceInfo?.name}")
                 }
             }
+        }
+        
+        Log.i(TAG, "Scan complete. Found ${servers.size} unique MCP services")
+        servers.forEach { server ->
+            Log.d(TAG, "  - ${server.packageName}/${server.serviceName}")
         }
         
         servers

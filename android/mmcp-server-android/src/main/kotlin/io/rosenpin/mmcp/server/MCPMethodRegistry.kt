@@ -45,8 +45,8 @@ class MCPMethodRegistry(
         callback: IMcpServiceCallback?,
         scope: CoroutineScope
     ): String {
-        val tool = serverInfo.tools.find { it.name == toolName }
-            ?: return createErrorResponse("Tool '$toolName' not found")
+        val tool = serverInfo.tools.find { it.id == toolName }
+            ?: return createErrorResponse("Tool '$toolName' not found. Available tools: ${serverInfo.tools.map { it.id }.joinToString(", ")}")
         
         return try {
             // Parse parameters
@@ -134,7 +134,7 @@ class MCPMethodRegistry(
             val scheme = uri.scheme ?: return createErrorResponse("Invalid URI: missing scheme")
             
             val resourceHandler = serverInfo.resources.find { it.scheme == scheme }
-                ?: return createErrorResponse("No resource handler for scheme '$scheme'")
+                ?: return createErrorResponse("No resource handler for scheme '$scheme'. Available schemes: ${serverInfo.resources.map { it.scheme }.joinToString(", ")}")
             
             // For resources, pass the full URI as a parameter
             val parameters = mapOf("uri" to resourceUri)
@@ -210,8 +210,8 @@ class MCPMethodRegistry(
         callback: IMcpServiceCallback?,
         scope: CoroutineScope
     ): String {
-        val prompt = serverInfo.prompts.find { it.name == promptName }
-            ?: return createErrorResponse("Prompt '$promptName' not found")
+        val prompt = serverInfo.prompts.find { it.id == promptName }
+            ?: return createErrorResponse("Prompt '$promptName' not found. Available prompts: ${serverInfo.prompts.map { it.id }.joinToString(", ")}")
         
         return try {
             // Parse parameters
@@ -341,7 +341,21 @@ class MCPMethodRegistry(
                 if (propSchema != null) {
                     val expectedType = propSchema["type"] as? String
                     if (expectedType != null && !isValidParameterType(value, expectedType)) {
-                        errors.add("Parameter '$paramName' has invalid type. Expected: $expectedType, got: ${value::class.simpleName}")
+                        val actualType = when (value) {
+                            is String -> "string"
+                            is Int, is Long -> "integer"
+                            is Float, is Double -> {
+                                // For numbers, check if it's actually an integer value
+                                if (value is Double && value % 1.0 == 0.0) "integer (as double)"
+                                else if (value is Float && value % 1.0f == 0.0f) "integer (as float)"
+                                else "number"
+                            }
+                            is Boolean -> "boolean"
+                            is List<*> -> "array"
+                            is Map<*, *> -> "object"
+                            else -> value::class.simpleName
+                        }
+                        errors.add("Parameter '$paramName' has invalid type. Expected: $expectedType, got: $actualType (value: $value)")
                     }
                 }
             }
@@ -354,7 +368,19 @@ class MCPMethodRegistry(
         return when (expectedType) {
             "string" -> value is String
             "number" -> value is Number
-            "integer" -> value is Int || value is Long
+            "integer" -> {
+                // Gson parses all JSON numbers as Double, so we need to check if it's a whole number
+                when (value) {
+                    is Int, is Long -> true
+                    is Double -> value % 1.0 == 0.0 // Check if it's a whole number
+                    is Float -> value % 1.0f == 0.0f
+                    is Number -> {
+                        val doubleValue = value.toDouble()
+                        doubleValue % 1.0 == 0.0
+                    }
+                    else -> false
+                }
+            }
             "boolean" -> value is Boolean
             "array" -> value is List<*> || value is Array<*>
             "object" -> value is Map<*, *>

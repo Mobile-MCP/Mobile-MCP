@@ -25,7 +25,7 @@ import java.io.IOException
  *     
  *     @MCPTool(id = "get_contacts_count", name = "Get Contacts Count")
  *     fun getContactsCount(): String {
- *         requireCallerPermission(android.Manifest.permission.READ_CONTACTS)
+ *         requireServerPermission(android.Manifest.permission.READ_CONTACTS)
  *         
  *         val count = queryContentProvider(
  *             ContactsContract.Contacts.CONTENT_URI,
@@ -261,7 +261,7 @@ abstract class ContentProviderMCPService : ContextAwareMCPService() {
         selectionArgs: Array<String>? = null,
         sortOrder: String? = null
     ): Cursor? {
-        requireCallerPermission(android.Manifest.permission.READ_CONTACTS)
+        requireServerPermission(android.Manifest.permission.READ_CONTACTS)
         return queryContentProvider(
             ContactsContract.Contacts.CONTENT_URI,
             projection,
@@ -287,7 +287,7 @@ abstract class ContentProviderMCPService : ContextAwareMCPService() {
         selectionArgs: Array<String>? = null,
         sortOrder: String? = null
     ): Cursor? {
-        requireCallerPermission(android.Manifest.permission.READ_CALENDAR)
+        requireServerPermission(android.Manifest.permission.READ_CALENDAR)
         return queryContentProvider(
             CalendarContract.Events.CONTENT_URI,
             projection,
@@ -319,23 +319,23 @@ abstract class ContentProviderMCPService : ContextAwareMCPService() {
         when (mediaType) {
             MediaType.IMAGES -> {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    requireCallerPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
+                    requireServerPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
                 } else {
-                    requireCallerPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                    requireServerPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
             }
             MediaType.AUDIO -> {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    requireCallerPermission(android.Manifest.permission.READ_MEDIA_AUDIO)
+                    requireServerPermission(android.Manifest.permission.READ_MEDIA_AUDIO)
                 } else {
-                    requireCallerPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                    requireServerPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
             }
             MediaType.VIDEO -> {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    requireCallerPermission(android.Manifest.permission.READ_MEDIA_VIDEO)
+                    requireServerPermission(android.Manifest.permission.READ_MEDIA_VIDEO)
                 } else {
-                    requireCallerPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                    requireServerPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
             }
         }

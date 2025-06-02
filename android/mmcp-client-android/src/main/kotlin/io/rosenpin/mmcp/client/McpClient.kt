@@ -188,6 +188,29 @@ class McpClient(
         }
     }
     
+    /**
+     * Get information about a specific tool
+     */
+    suspend fun getToolInfo(packageName: String, toolId: String): Result<String> {
+        val connection = getConnection(packageName)
+            ?: return Result.failure(McpException("Not connected to server $packageName"))
+        
+        val toolService = connection.toolService
+            ?: return Result.failure(McpException("Server $packageName does not support tools"))
+        
+        return try {
+            val info = toolService.getToolInfo(toolId)
+            if (info.isNullOrEmpty()) {
+                Result.failure(McpException("Tool '$toolId' not found"))
+            } else {
+                Result.success(info)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting tool info for '$toolId' from $packageName", e)
+            Result.failure(e)
+        }
+    }
+    
     // Resource Access API
     
     /**
@@ -280,6 +303,29 @@ class McpClient(
         }
     }
     
+    /**
+     * Get information about a specific prompt
+     */
+    suspend fun getPromptInfo(packageName: String, promptId: String): Result<String> {
+        val connection = getConnection(packageName)
+            ?: return Result.failure(McpException("Not connected to server $packageName"))
+        
+        val promptService = connection.promptService
+            ?: return Result.failure(McpException("Server $packageName does not support prompts"))
+        
+        return try {
+            val info = promptService.getPromptInfo(promptId)
+            if (info.isNullOrEmpty()) {
+                Result.failure(McpException("Prompt '$promptId' not found"))
+            } else {
+                Result.success(info)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting prompt info for '$promptId' from $packageName", e)
+            Result.failure(e)
+        }
+    }
+    
     // HTTP Server API
     
     /**
@@ -355,22 +401,64 @@ class McpClient(
     // Helper methods (TODO: Implement proper JSON handling)
     
     private fun mapToJson(map: Map<String, Any>): String {
-        // Simplified JSON conversion - implement proper JSON handling
-        return "{}"
+        // Simple JSON serialization for parameter passing
+        if (map.isEmpty()) return "{}"
+        
+        val entries = map.entries.joinToString(",") { (key, value) ->
+            when (value) {
+                is String -> "\"$key\":\"$value\""
+                is Number -> "\"$key\":$value"
+                is Boolean -> "\"$key\":$value"
+                null -> "\"$key\":null"
+                else -> "\"$key\":\"$value\""
+            }
+        }
+        return "{$entries}"
     }
     
-    private fun parseToolList(json: String): List<String> {
-        // Simplified parsing - implement proper JSON handling  
-        return listOf("example_tool")
+    private fun parseToolList(response: String): List<String> {
+        // Server returns format: "toolId1:description1;toolId2:description2"
+        if (response.isEmpty() || response.startsWith("Error:") || response == "Service not initialized") {
+            return emptyList()
+        }
+        
+        return response.split(";").mapNotNull { entry ->
+            val parts = entry.split(":")
+            if (parts.size >= 2) {
+                // Extract the tool ID from the first part
+                parts[0].trim()
+            } else null
+        }
     }
     
-    private fun parseResourceList(json: String): List<String> {
-        // Simplified parsing - implement proper JSON handling
-        return listOf("example://resource")
+    private fun parseResourceList(response: String): List<String> {
+        // Server returns format: "scheme:name:description;scheme2:name2:description2"
+        if (response.isEmpty() || response.startsWith("Error:") || response == "Service not initialized") {
+            return emptyList()
+        }
+        
+        // Return the schemes that this server handles
+        return response.split(";").mapNotNull { entry ->
+            val parts = entry.split(":")
+            if (parts.size >= 3) {
+                // Return just the scheme - the actual URI will be provided when reading
+                parts[0].trim()
+            } else null
+        }
     }
     
-    private fun parsePromptList(json: String): List<String> {
-        // Simplified parsing - implement proper JSON handling
-        return listOf("example_prompt")
+    private fun parsePromptList(response: String): List<String> {
+        // Server returns format: "promptId1:description1;promptId2:description2"
+        if (response.isEmpty() || response.startsWith("Error:") || response == "Service not initialized") {
+            return emptyList()
+        }
+        
+        return response.split(";").mapNotNull { entry ->
+            val parts = entry.split(":")
+            if (parts.size >= 2) {
+                // Extract the prompt ID from the first part
+                parts[0].trim()
+            } else null
+        }
     }
 }
