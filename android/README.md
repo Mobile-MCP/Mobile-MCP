@@ -213,8 +213,8 @@ class FileManagerMCPServer: ContextAwareMCPService() {
 }
 ```
 
-#### 4. Register the service in your Manifest
-  ```
+#### 4. Register the service in your Manifest  
+  ```xml
 <!-- MCP Service -->
         <service
             android:name=".PhoneMCPService"
