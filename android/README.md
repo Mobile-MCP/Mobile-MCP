@@ -478,6 +478,10 @@ See the [main contributing guide](../README.md#contributing) for general informa
 
 ## Current Progress
 
+
+https://github.com/user-attachments/assets/b02066a0-f85b-42e8-9a98-174ca7e9d7a3
+
+
 ### What's Completed ✅
 
 - **Core Client Library (`mmcp-client-android`)**
