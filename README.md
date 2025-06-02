@@ -8,13 +8,13 @@ The Mobile MCP Framework brings the [Model Context Protocol (MCP)](https://model
 
 ## The Problem
 
-Mobile LLMs are isolated - they can't access your files, contacts, calendar, or other app data. Desktop LLMs use MCP to connect with external tools, but mobile platforms have different constraints (no subprocesses, sandboxing, battery concerns).
+Mobile LLMs are isolated - they can't access your files, contacts, calendar, or other app data. Desktop LLMs use MCP to connect with external tools, but mobile platforms are not as mature yet and have different constraints (no subprocesses, sandboxing, etc).
 
 ## The Solution
 
 A **two-sided framework** that bridges this gap:
 
-- **For LLM Apps**: Import `mmcp-client-android`, get instant access to local MCP servers
+- **For LLM Apps**: Import `mmcp-client-android`, to get access to locally available MCP servers
 - **For App Developers**: Import `mmcp-server-android`, add simple annotations, expose your app's capabilities to any LLM
 
 ## Platform Support
@@ -74,14 +74,6 @@ class PhoneMCPService : MCPServiceBase() {
 
 👉 **[Complete Android Integration Guide](android/README.md)**
 
-## Key Features
-
-- **Zero Boilerplate**: Annotations generate all necessary code
-- **Mobile-Optimized**: HTTP-first design, respects platform constraints  
-- **Future-Proof**: Supports stdio when mobile LLMs add it
-- **Secure**: Permission-based access control
-- **Fast**: Sub-100ms discovery and connection
-
 ## Architecture
 
 ```
@@ -100,12 +92,12 @@ class PhoneMCPService : MCPServiceBase() {
                                                 └─────────────────────┘
 ```
 
-## Use Cases
+## Some Example Use Cases
 
 - **File Manager**: Expose file operations to LLMs
 - **Contact App**: Let LLMs search and access contacts  
 - **Calendar**: Enable LLMs to read/create events
-- **Note-Taking**: Allow LLMs to search through notes
+- **Note-Taking Apps**: Allow LLMs to search through notes
 - **Photo Gallery**: Let LLMs analyze and search photos
 
 ## Documentation
