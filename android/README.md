@@ -27,7 +27,7 @@ The client library (`io.rosenpin.mcp:mmcp-client-android`) provides:
 
 - **HTTP Server**: NanoHTTPD-based MCP endpoint server (port 11434)
 - **Discovery Engine**: Intent-based Android MCP server discovery
-- **Direct API**: In-process tool calling for MLKit-style LLMs
+- **Direct API**: In-process tool calling for MLKit-style LLMs (WIP)
 - **Transport Bridge**: AIDL-to-HTTP/Direct call abstraction
 
 ### `mmcp-server-android` - For 3rd Party Apps
@@ -38,8 +38,6 @@ The server framework (`io.rosenpin.mcp:mmcp-server-android`) provides:
 - **Code Generation**: KAPT processor for AIDL service generation
 - **Build Integration**: Gradle plugin for manifest entries and permissions
 - **Runtime Support**: Base classes and utilities for generated services
-
-**Dependencies**: Android AIDL, Kotlin Coroutines, Gson (JSON), KAPT (code generation)
 
 ## Integration Guide
 
