@@ -303,52 +303,56 @@ class MCPDirectApiImpl(
     // Helper methods for parsing responses
     
     private fun parseToolsFromServer(json: String, serverId: String): List<MCPTool> {
-        // TODO: Implement proper JSON parsing of tool schemas
-        // For now, return mock data
-        return listOf(
+        // Server returns tools as "id:description" separated by semicolons
+        return json.split(";").mapNotNull { toolData ->
+            val parts = toolData.split(":", limit = 2)
+            if (parts.isEmpty() || parts[0].isBlank()) return@mapNotNull null
+            
             MCPTool(
-                name = "example_tool",
-                description = "Example tool from $serverId",
+                name = parts[0].trim(),
+                description = parts.getOrNull(1)?.trim() ?: "",
                 serverId = serverId,
                 serverName = serverId,
                 inputSchema = MCPSchema(
                     type = "object",
-                    properties = mapOf(
-                        "input" to MCPParameter("input", "string", "Input parameter", true)
-                    ),
-                    required = listOf("input")
+                    properties = emptyMap(),
+                    required = emptyList()
                 )
             )
-        )
+        }
     }
     
     private fun parseResourcesFromServer(json: String, serverId: String): List<MCPResource> {
-        // TODO: Implement proper JSON parsing
-        return listOf(
+        // Server returns resources as "scheme:name:description" separated by semicolons
+        return json.split(";").mapNotNull { resourceData ->
+            val parts = resourceData.split(":", limit = 3)
+            if (parts.isEmpty() || parts[0].isBlank()) return@mapNotNull null
+            
             MCPResource(
-                uri = "example://resource",
-                name = "Example Resource",
-                description = "Example resource from $serverId",
-                mimeType = "text/plain",
+                uri = "${parts[0].trim()}://resource", // Construct URI from scheme
+                name = parts.getOrNull(1)?.trim() ?: "Resource",
+                description = parts.getOrNull(2)?.trim() ?: "",
+                mimeType = "text/plain", // Default mime type
                 serverId = serverId,
                 serverName = serverId
             )
-        )
+        }
     }
     
     private fun parsePromptsFromServer(json: String, serverId: String): List<MCPPrompt> {
-        // TODO: Implement proper JSON parsing
-        return listOf(
+        // Server returns prompts as "id:description" separated by semicolons
+        return json.split(";").mapNotNull { promptData ->
+            val parts = promptData.split(":", limit = 2)
+            if (parts.isEmpty() || parts[0].isBlank()) return@mapNotNull null
+            
             MCPPrompt(
-                name = "example_prompt",
-                description = "Example prompt from $serverId",
+                name = parts[0].trim(),
+                description = parts.getOrNull(1)?.trim() ?: "",
                 serverId = serverId,
                 serverName = serverId,
-                arguments = listOf(
-                    MCPPromptArgument("input", "Input for the prompt", true)
-                )
+                arguments = emptyList() // Default empty arguments until we have schema
             )
-        )
+        }
     }
     
     private fun parseToolResult(result: String): Any? {

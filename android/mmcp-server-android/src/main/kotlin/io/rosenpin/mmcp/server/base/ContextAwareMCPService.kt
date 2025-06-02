@@ -163,16 +163,6 @@ abstract class ContextAwareMCPService : MCPServiceBase() {
     }
     
     /**
-     * Legacy method - DO NOT USE. Use requireServerPermission instead.
-     * @deprecated The MCP architecture requires servers to have permissions, not clients
-     */
-    @Deprecated("Use requireServerPermission instead", ReplaceWith("requireServerPermission(permission)"))
-    protected fun requireCallerPermission(permission: String) {
-        // For backward compatibility, redirect to the correct method
-        requireServerPermission(permission)
-    }
-    
-    /**
      * Require that the caller is a specific package, throwing an exception if not.
      * 
      * @param allowedPackage The required package name

@@ -126,7 +126,7 @@ class MCPHttpServer(
                 )
             }
         }.let {
-            // Return a placeholder for now - proper async handling will be implemented
+            // Using synchronous handler until coroutine support is added to NanoHTTPD
             newFixedLengthResponse(Response.Status.OK, MIME_JSON, requestHandler.handleToolsListSync())
         }
     }

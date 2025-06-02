@@ -350,40 +350,49 @@ class MCPRequestHandler(
     
     
     private fun parseToolsFromServer(json: String, serverId: String): List<ToolInfo> {
-        // TODO: Implement proper JSON parsing
-        return listOf(
+        // Server returns tools as "id:description" separated by semicolons
+        return json.split(";").mapNotNull { toolData ->
+            val parts = toolData.split(":", limit = 2)
+            if (parts.isEmpty() || parts[0].isBlank()) return@mapNotNull null
+            
             ToolInfo(
-                name = "example_tool",
-                description = "Example tool from $serverId",
+                name = parts[0].trim(),
+                description = parts.getOrNull(1)?.trim() ?: "",
                 serverId = serverId,
                 serverName = serverId
             )
-        )
+        }
     }
     
     private fun parseResourcesFromServer(json: String, serverId: String): List<ResourceInfo> {
-        // TODO: Implement proper JSON parsing
-        return listOf(
+        // Server returns resources as "scheme:name:description" separated by semicolons
+        return json.split(";").mapNotNull { resourceData ->
+            val parts = resourceData.split(":", limit = 3)
+            if (parts.isEmpty() || parts[0].isBlank()) return@mapNotNull null
+            
             ResourceInfo(
-                uri = "example://resource",
-                name = "Example Resource",
-                description = "Example resource from $serverId",
+                uri = "${parts[0].trim()}://resource", // Construct URI from scheme
+                name = parts.getOrNull(1)?.trim() ?: "Resource",
+                description = parts.getOrNull(2)?.trim() ?: "",
                 serverId = serverId,
                 serverName = serverId
             )
-        )
+        }
     }
     
     private fun parsePromptsFromServer(json: String, serverId: String): List<PromptInfo> {
-        // TODO: Implement proper JSON parsing
-        return listOf(
+        // Server returns prompts as "id:description" separated by semicolons
+        return json.split(";").mapNotNull { promptData ->
+            val parts = promptData.split(":", limit = 2)
+            if (parts.isEmpty() || parts[0].isBlank()) return@mapNotNull null
+            
             PromptInfo(
-                name = "example_prompt",
-                description = "Example prompt from $serverId",
+                name = parts[0].trim(),
+                description = parts.getOrNull(1)?.trim() ?: "",
                 serverId = serverId,
                 serverName = serverId
             )
-        )
+        }
     }
     
     private fun createToolsListResponse(tools: List<ToolInfo>): String {
@@ -406,13 +415,8 @@ class MCPRequestHandler(
     }
     
     private fun createToolCallResponse(requestId: String, result: String): String {
-        // Parse the result string as JSON-like content for now
-        val resultData = try {
-            // For now, wrap the result string - in full implementation this would be proper JSON parsing
-            mapOf("content" to listOf(mapOf("type" to "text", "text" to result)))
-        } catch (e: Exception) {
-            mapOf("content" to listOf(mapOf("type" to "text", "text" to result)))
-        }
+        // Wrap the result string in standard MCP tool response format
+        val resultData = mapOf("content" to listOf(mapOf("type" to "text", "text" to result)))
         
         val response = jsonRpcSerializer.createSuccessResponse(
             requestId = requestId,

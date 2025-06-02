@@ -217,7 +217,6 @@ fun MCPClientTestScreen(
                     
                     discoveredServers.forEach { serverPackage ->
                         val serverInfo = mcpClient.discoveredServers.value.find { it.packageName == serverPackage }
-                        // Use the server's package name as display name for now
                         // serverInfo?.serverInfo might be null if not yet connected
                         val serverName = serverPackage.substringAfterLast('.')
                         

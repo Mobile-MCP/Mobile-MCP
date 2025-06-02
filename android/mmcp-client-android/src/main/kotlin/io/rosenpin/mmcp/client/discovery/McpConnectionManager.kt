@@ -236,13 +236,8 @@ class McpConnectionManager(
      * Parse capabilities JSON (simplified implementation)
      */
     private fun parseCapabilities(json: String): List<String> {
-        // TODO: Implement proper JSON parsing
-        // For now, return basic capabilities
-        return listOf(
-            McpConstants.Capabilities.TOOLS,
-            McpConstants.Capabilities.RESOURCES,
-            McpConstants.Capabilities.PROMPTS
-        )
+        // Server returns capabilities as comma-separated values
+        return json.split(",").map { it.trim() }.filter { it.isNotEmpty() }
     }
     
     /**

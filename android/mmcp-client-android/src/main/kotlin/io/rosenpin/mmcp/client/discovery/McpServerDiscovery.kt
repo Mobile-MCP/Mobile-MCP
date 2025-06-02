@@ -253,7 +253,7 @@ class McpServerDiscovery(
                 if (service != null) {
                     // Query server information
                     val serverInfoJson = service.serverInfo
-                    // Parse JSON to McpServerInfo (simplified for now)
+                    // Parse server info string to McpServerInfo
                     val serverInfo = parseServerInfo(serverInfoJson, packageName)
                     
                     // Disconnect after querying
@@ -281,15 +281,16 @@ class McpServerDiscovery(
      * Parse server info JSON (simplified implementation)
      */
     private fun parseServerInfo(json: String, packageName: String): McpServerInfo {
-        // TODO: Implement proper JSON parsing
-        // For now, create a basic server info
+        // Server returns info as "id|name|description|version"
+        val parts = json.split("|")
+        
         return McpServerInfo(
             packageName = packageName,
-            serviceName = "McpService", // Default
-            serverName = "MCP Server", // Default  
-            version = "1.0.0", // Default
-            description = "MCP Server from $packageName",
-            capabilities = listOf("tools", "resources") // Default
+            serviceName = "McpService", // Service name is always McpService
+            serverName = parts.getOrNull(1)?.trim() ?: "MCP Server",
+            version = parts.getOrNull(3)?.trim() ?: "1.0.0",
+            description = parts.getOrNull(2)?.trim() ?: "MCP Server from $packageName",
+            capabilities = listOf("tools", "resources", "prompts") // Will be determined by actual discovery
         )
     }
     
