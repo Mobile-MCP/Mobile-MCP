@@ -28,6 +28,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.text.selection.SelectionContainer
 
 private const val TAG = "MCPExampleApp"
 
@@ -100,6 +101,12 @@ fun MCPClientTestScreen(
     var showingToolDialog by remember { mutableStateOf<ToolInfo?>(null) }
     var showingPromptDialog by remember { mutableStateOf<PromptInfo?>(null) }
     var showingDialogForServer by remember { mutableStateOf("") }
+    
+    // Result dialog state
+    var showingResultDialog by remember { mutableStateOf(false) }
+    var resultDialogTitle by remember { mutableStateOf("") }
+    var resultDialogContent by remember { mutableStateOf("") }
+    var resultDialogIsError by remember { mutableStateOf(false) }
     
     val gson = remember { Gson() }
     
@@ -405,9 +412,20 @@ fun MCPClientTestScreen(
                                 OutlinedButton(
                                     onClick = {
                                         lifecycleScope.launch {
-                                            readResourceWithUI(mcpClient, serverPackage, resource) { result ->
-                                                testResults = testResults + result
-                                            }
+                                            readResourceWithUI(
+                                                mcpClient, 
+                                                serverPackage, 
+                                                resource,
+                                                onResult = { result ->
+                                                    testResults = testResults + result
+                                                },
+                                                onShowDialog = { title, content, isError ->
+                                                    resultDialogTitle = title
+                                                    resultDialogContent = content
+                                                    resultDialogIsError = isError
+                                                    showingResultDialog = true
+                                                }
+                                            )
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth()
@@ -522,9 +540,21 @@ fun MCPClientTestScreen(
             onDismiss = { showingToolDialog = null },
             onConfirm = { params ->
                 lifecycleScope.launch {
-                    executeToolWithUI(mcpClient, showingDialogForServer, tool, params) { result ->
-                        testResults = testResults + result
-                    }
+                    executeToolWithUI(
+                        mcpClient, 
+                        showingDialogForServer, 
+                        tool, 
+                        params,
+                        onResult = { result ->
+                            testResults = testResults + result
+                        },
+                        onShowDialog = { title, content, isError ->
+                            resultDialogTitle = title
+                            resultDialogContent = content
+                            resultDialogIsError = isError
+                            showingResultDialog = true
+                        }
+                    )
                 }
                 showingToolDialog = null
             }
@@ -540,12 +570,34 @@ fun MCPClientTestScreen(
             onDismiss = { showingPromptDialog = null },
             onConfirm = { params ->
                 lifecycleScope.launch {
-                    getPromptWithUI(mcpClient, showingDialogForServer, prompt, params) { result ->
-                        testResults = testResults + result
-                    }
+                    getPromptWithUI(
+                        mcpClient, 
+                        showingDialogForServer, 
+                        prompt, 
+                        params,
+                        onResult = { result ->
+                            testResults = testResults + result
+                        },
+                        onShowDialog = { title, content, isError ->
+                            resultDialogTitle = title
+                            resultDialogContent = content
+                            resultDialogIsError = isError
+                            showingResultDialog = true
+                        }
+                    )
                 }
                 showingPromptDialog = null
             }
+        )
+    }
+    
+    // Result dialog to show MCP call results
+    if (showingResultDialog) {
+        ResultDialog(
+            title = resultDialogTitle,
+            content = resultDialogContent,
+            isError = resultDialogIsError,
+            onDismiss = { showingResultDialog = false }
         )
     }
 }
@@ -823,26 +875,50 @@ private suspend fun executeToolWithUI(
     packageName: String,
     tool: ToolInfo,
     parameters: Map<String, Any> = emptyMap(),
-    onResult: (String) -> Unit
+    onResult: (String) -> Unit,
+    onShowDialog: (title: String, content: String, isError: Boolean) -> Unit
 ) {
     try {
         Log.d(TAG, "Executing tool '${tool.id}' on $packageName with parameters: $parameters")
         val result = mcpClient.executeTool(packageName, tool.id, parameters)
         
         if (result.isSuccess) {
-            val message = "Tool '${tool.name.ifEmpty { tool.id }}': ${result.getOrNull()}"
+            val resultContent = result.getOrNull() ?: "No result returned"
+            val message = "Tool '${tool.name.ifEmpty { tool.id }}': $resultContent"
             Log.i(TAG, message)
             onResult(message)
+            
+            // Show success dialog
+            onShowDialog(
+                "Tool Result: ${tool.name.ifEmpty { tool.id }}",
+                resultContent,
+                false
+            )
         } else {
             val error = result.exceptionOrNull()
-            val message = "Tool '${tool.name.ifEmpty { tool.id }}' failed: ${error?.message ?: "Unknown error"}"
+            val errorMessage = error?.message ?: "Unknown error"
+            val message = "Tool '${tool.name.ifEmpty { tool.id }}' failed: $errorMessage"
             Log.e(TAG, message, error)
             onResult(message)
+            
+            // Show error dialog
+            onShowDialog(
+                "Tool Failed: ${tool.name.ifEmpty { tool.id }}",
+                errorMessage,
+                true
+            )
         }
     } catch (e: Exception) {
         val message = "Tool '${tool.name.ifEmpty { tool.id }}' error: ${e.message}"
         Log.e(TAG, message, e)
         onResult(message)
+        
+        // Show error dialog
+        onShowDialog(
+            "Tool Error: ${tool.name.ifEmpty { tool.id }}",
+            e.message ?: "An unexpected error occurred",
+            true
+        )
     }
 }
 
@@ -851,7 +927,8 @@ private suspend fun readResourceWithUI(
     mcpClient: McpClient,
     packageName: String,
     resourceUri: String,
-    onResult: (String) -> Unit
+    onResult: (String) -> Unit,
+    onShowDialog: (title: String, content: String, isError: Boolean) -> Unit
 ) {
     try {
         Log.d(TAG, "Reading resource '$resourceUri' from $packageName")
@@ -863,16 +940,38 @@ private suspend fun readResourceWithUI(
             val message = "Resource '$resourceUri': $preview"
             Log.i(TAG, "Resource read success: $resourceUri")
             onResult(message)
+            
+            // Show full content in dialog
+            onShowDialog(
+                "Resource: $resourceUri",
+                content,
+                false
+            )
         } else {
             val error = result.exceptionOrNull()
-            val message = "Resource '$resourceUri' failed: ${error?.message ?: "Unknown error"}"
+            val errorMessage = error?.message ?: "Unknown error"
+            val message = "Resource '$resourceUri' failed: $errorMessage"
             Log.e(TAG, message, error)
             onResult(message)
+            
+            // Show error dialog
+            onShowDialog(
+                "Resource Failed: $resourceUri",
+                errorMessage,
+                true
+            )
         }
     } catch (e: Exception) {
         val message = "Resource '$resourceUri' error: ${e.message}"
         Log.e(TAG, message, e)
         onResult(message)
+        
+        // Show error dialog
+        onShowDialog(
+            "Resource Error: $resourceUri",
+            e.message ?: "An unexpected error occurred",
+            true
+        )
     }
 }
 
@@ -882,7 +981,8 @@ private suspend fun getPromptWithUI(
     packageName: String,
     prompt: PromptInfo,
     parameters: Map<String, Any> = emptyMap(),
-    onResult: (String) -> Unit
+    onResult: (String) -> Unit,
+    onShowDialog: (title: String, content: String, isError: Boolean) -> Unit
 ) {
     try {
         Log.d(TAG, "Getting prompt '${prompt.id}' from $packageName")
@@ -894,16 +994,38 @@ private suspend fun getPromptWithUI(
             val message = "Prompt '${prompt.name.ifEmpty { prompt.id }}': $preview"
             Log.i(TAG, "Prompt retrieved: ${prompt.id}")
             onResult(message)
+            
+            // Show full prompt in dialog
+            onShowDialog(
+                "Prompt: ${prompt.name.ifEmpty { prompt.id }}",
+                content,
+                false
+            )
         } else {
             val error = result.exceptionOrNull()
-            val message = "Prompt '${prompt.name.ifEmpty { prompt.id }}' failed: ${error?.message ?: "Unknown error"}"
+            val errorMessage = error?.message ?: "Unknown error"
+            val message = "Prompt '${prompt.name.ifEmpty { prompt.id }}' failed: $errorMessage"
             Log.e(TAG, message, error)
             onResult(message)
+            
+            // Show error dialog
+            onShowDialog(
+                "Prompt Failed: ${prompt.name.ifEmpty { prompt.id }}",
+                errorMessage,
+                true
+            )
         }
     } catch (e: Exception) {
         val message = "Prompt '${prompt.name.ifEmpty { prompt.id }}' error: ${e.message}"
         Log.e(TAG, message, e)
         onResult(message)
+        
+        // Show error dialog
+        onShowDialog(
+            "Prompt Error: ${prompt.name.ifEmpty { prompt.id }}",
+            e.message ?: "An unexpected error occurred",
+            true
+        )
     }
 }
 
@@ -1082,6 +1204,116 @@ fun ParameterInputDialog(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Execute")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ResultDialog(
+    title: String,
+    content: String,
+    isError: Boolean,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .heightIn(max = 600.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isError) {
+                    MaterialTheme.colorScheme.errorContainer
+                } else {
+                    MaterialTheme.colorScheme.surface
+                }
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Title with icon
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = if (isError) "❌" else "✅",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isError) {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        }
+                    )
+                }
+                
+                HorizontalDivider()
+                
+                // Scrollable content
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .fillMaxWidth()
+                ) {
+                    item {
+                        // Format JSON if possible
+                        val formattedContent = try {
+                            if (content.trimStart().startsWith("{") || content.trimStart().startsWith("[")) {
+                                // Try to parse and pretty-print JSON
+                                val gson = com.google.gson.GsonBuilder()
+                                    .setPrettyPrinting()
+                                    .create()
+                                val jsonElement = gson.fromJson(content, com.google.gson.JsonElement::class.java)
+                                gson.toJson(jsonElement)
+                            } else {
+                                content
+                            }
+                        } catch (e: Exception) {
+                            content
+                        }
+                        
+                        SelectionContainer {
+                            Text(
+                                text = formattedContent,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                ),
+                                color = if (isError) {
+                                    MaterialTheme.colorScheme.onErrorContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                }
+                            )
+                        }
+                    }
+                }
+                
+                // Actions
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        colors = if (isError) {
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        } else {
+                            ButtonDefaults.buttonColors()
+                        }
+                    ) {
+                        Text("Close")
                     }
                 }
             }

@@ -30,10 +30,15 @@ class MainActivity : ComponentActivity() {
         Manifest.permission.READ_CALL_LOG
     )
     
+    // State to trigger UI recomposition
+    private val permissionsGranted = mutableStateOf(false)
+    
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.all { it.value }
+        // Update the state to trigger recomposition
+        permissionsGranted.value = checkAllPermissionsGranted()
         if (allGranted) {
             // All permissions granted - MCP server is ready
         } else {
@@ -45,12 +50,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
+        // Check initial permission state
+        permissionsGranted.value = checkAllPermissionsGranted()
+        
         setContent {
             MMCPAndroidTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MCPServerScreen(
                         modifier = Modifier.padding(innerPadding),
-                        onRequestPermissions = { requestPermissions() }
+                        onRequestPermissions = { requestPermissions() },
+                        // Pass the state as a parameter to trigger recomposition
+                        permissionsGranted = permissionsGranted.value
                     )
                 }
             }
@@ -58,6 +68,18 @@ class MainActivity : ComponentActivity() {
         
         // Request permissions on first launch
         requestPermissions()
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Check permissions when the app resumes (e.g., returning from settings)
+        permissionsGranted.value = checkAllPermissionsGranted()
+    }
+    
+    private fun checkAllPermissionsGranted(): Boolean {
+        return requiredPermissions.all { permission ->
+            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+        }
     }
     
     private fun requestPermissions() {
@@ -74,7 +96,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MCPServerScreen(
     modifier: Modifier = Modifier,
-    onRequestPermissions: () -> Unit = {}
+    onRequestPermissions: () -> Unit = {},
+    permissionsGranted: Boolean = false
 ) {
     val context = LocalContext.current
     
@@ -84,8 +107,11 @@ fun MCPServerScreen(
         Manifest.permission.READ_CALL_LOG
     )
     
-    val permissionStatus = requiredPermissions.map { permission ->
-        permission to (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED)
+    // Use remember with the permissionsGranted key to recompute when permissions change
+    val permissionStatus = remember(permissionsGranted) {
+        requiredPermissions.map { permission ->
+            permission to (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED)
+        }
     }
     
     val allPermissionsGranted = permissionStatus.all { it.second }
@@ -147,11 +173,31 @@ fun MCPServerScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    
+                    // Show server info
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Server ID: io.rosenpin.mcp.phonemcpserver",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Available via MCP discovery to client apps",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 } else {
                     Text(
                         text = "⚠️ Some permissions are missing. Please grant all permissions for full functionality.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
+                    )
+                    
+                    val missingCount = permissionStatus.count { !it.second }
+                    Text(
+                        text = "$missingCount permission${if (missingCount > 1) "s" else ""} still required",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
